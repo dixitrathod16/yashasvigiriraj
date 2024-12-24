@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Skeleton } from "@/components/ui/skeleton"
+import { motion } from 'framer-motion'
 
 interface VideoState {
   isLoading: boolean;
@@ -98,7 +99,7 @@ export function VideoCarousel() {
     if (emblaApi && !isVideoPlaying) {
       const autoplay = setInterval(() => {
         emblaApi.scrollNext()
-      }, 4000)
+      }, 5000)
 
       return () => clearInterval(autoplay)
     }
@@ -157,7 +158,12 @@ export function VideoCarousel() {
         <h2 className="text-3xl font-bold text-center mb-8 text-primary decorative-border">
           वीडियो गैलरी
         </h2>
-        <div className="relative w-full max-w-[1400px] mx-auto">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="relative w-full max-w-[1400px] mx-auto"
+        >
           <div className="overflow-hidden rounded-lg" ref={emblaRef}>
             <div className="flex">
               {renderContent()}
@@ -183,7 +189,7 @@ export function VideoCarousel() {
               </Button>
             </>
           )}
-        </div>
+        </motion.div>
       </CardContent>
     </Card>
   )

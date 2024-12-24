@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import Image from 'next/image'
 // import { CalendarDays, MapPin, Clock, Sun } from 'lucide-react'
 
-export function Nimantrak() {
+export function About() {
     return (
         <Card className="w-full p-3 md:p-8 border-2 border-primary/20">
             <CardContent className="p-6 md:p-8">

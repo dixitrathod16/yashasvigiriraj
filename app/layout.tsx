@@ -9,7 +9,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'यशस्वी गिरिराज संघ - Jain Spiritual Pilgrimage',
+  title: 'यशस्वी गिरिराज - Jain Spiritual Pilgrimage',
   description: 'Join us for a transformative Jain spiritual pilgrimage event.',
 }
 
