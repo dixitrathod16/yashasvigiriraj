@@ -78,9 +78,14 @@ export function Navigation() {
             </span>
           </Link>
         </motion.div>
-        <span className="md:hidden text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+        <motion.span 
+          className="md:hidden text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1}}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
             यशस्वी गिरिराज
-        </span>
+        </motion.span>
         <div className="hidden md:flex space-x-1">
           {menuItems.map((item, index) => (
             <motion.div

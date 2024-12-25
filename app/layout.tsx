@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Poppins } from 'next/font/google'
 import './globals.css'
+import { Toaster } from 'sonner'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -16,16 +17,15 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${poppins.variable} font-sans antialiased bg-background`}
-      >
+      <body className={`${poppins.variable} font-sans antialiased bg-background`}>
         {children}
+        <Toaster richColors position="top-center" />
       </body>
     </html>
-  )
+  );
 }
 

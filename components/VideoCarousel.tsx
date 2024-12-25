@@ -47,7 +47,7 @@ export function VideoCarousel() {
     videos: []
   })
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [emblaRef, emblaApi] = useEmblaCarousel({ 
+  const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
     duration: 20,
     skipSnaps: false
@@ -78,10 +78,11 @@ export function VideoCarousel() {
       try {
         const response = await fetch('/api/youtube');
         const data = await response.json();
+        const uniqueVideos = data.videos.map((video: { id: string }) => video.id)
         setState(prev => ({
           ...prev,
           isLoading: false,
-          videos: data.videos.map((video: { id: string }) => video.id)
+          videos: uniqueVideos
         }));
       } catch (error) {
         setState(prev => ({
@@ -158,7 +159,7 @@ export function VideoCarousel() {
         <h2 className="text-3xl font-bold text-center mb-8 text-primary decorative-border">
           वीडियो गैलरी
         </h2>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
