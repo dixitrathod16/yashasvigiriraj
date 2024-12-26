@@ -2,7 +2,7 @@ import { PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { dynamoDb } from './dynamodb';
 
 const TABLE_NAME = 'registration_notifications';
-const CACHE_RECORD_TYPE = 'youtube_cache';
+const CACHE_RECORD_TYPE = 'google_api_cache';
 const CACHE_TTL = 3600; // 1 hour in seconds
 
 interface CacheItem<T> {

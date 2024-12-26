@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 const menuItems = [
   { name: 'Home', href: '#home' },
   { name: 'Videos', href: '#videos' },
+  { name: 'Images', href: '#images' },
   { name: 'Registration', href: '#registration' },
   { name: 'About Us', href: '#about-us' },
   { name: 'Event Details', href: '#event-details' },

@@ -6,6 +6,7 @@ import { Navigation } from '@/components/Navigation'
 import { RegistrationBanner } from '@/components/RegistrationBanner'
 import { ContactUs } from '@/components/ContactUs'
 import { About } from '@/components/About'
+import { ImageCarousel } from '@/components/ImageCarousel'
 
 // This is a Server Component by default
 export default function Home() {
@@ -19,6 +20,9 @@ export default function Home() {
         <div className="container mx-auto px-2 md:px-10 py-3 md:py-5 space-y-16">
           <section id="videos">
             <VideoCarousel />
+          </section>
+          <section id="images">
+            <ImageCarousel />
           </section>
           <section id="registration">
             <RegistrationBanner />
