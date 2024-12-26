@@ -1,7 +1,7 @@
 'use client'
 import { Card, CardContent } from "@/components/ui/card"
 import { motion } from "framer-motion"
-import { Facebook, Instagram, Youtube } from "lucide-react"
+import { Instagram, Youtube } from "lucide-react"
 
 export function ContactUs() {
   return (
@@ -18,11 +18,7 @@ export function ContactUs() {
         >
           <p className="text-lg">Email: <a href="mailto:yashashvigiriraj@gmail.com" className="text-lg">yashashvigiriraj@gmail.com
           </a></p>
-          <p className="text-lg">Phone: <a href="tel:+919738876147" className="text-lg">+91 9738876147</a></p>
           <div className="flex space-x-4 justify-center">
-            <a href="#" className="text-primary hover:text-secondary transition-colors">
-              <Facebook size={24} />
-            </a>
             <a href="https://www.instagram.com/yashashvi_giriraj?igsh=MXh5MGJkanQ1M3Z1Mw==" className="text-primary hover:text-secondary transition-colors">
               <Instagram size={24} />
             </a>

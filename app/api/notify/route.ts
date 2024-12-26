@@ -22,12 +22,26 @@ export async function POST(req: Request) {
       );
     }
 
-    const { phoneNumber } = await req.json();
+    const { phoneNumber, fullName, hasConsent } = await req.json();
     
-    // Validate phone number (basic validation)
+    // Validate inputs
     if (!phoneNumber || phoneNumber.length < 10) {
       return NextResponse.json(
         { error: 'Invalid phone number' },
+        { status: 400 }
+      );
+    }
+
+    if (!fullName || fullName.trim().length < 2) {
+      return NextResponse.json(
+        { error: 'Please enter your full name' },
+        { status: 400 }
+      );
+    }
+
+    if (hasConsent !== true) {
+      return NextResponse.json(
+        { error: 'Consent is required to proceed' },
         { status: 400 }
       );
     }
@@ -50,15 +64,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // Store phone number in DynamoDB with new schema
+    // Store user details in DynamoDB
     await dynamoDb.send(
       new PutCommand({
         TableName: TABLE_NAME,
         Item: {
           recordType: RECORD_TYPE,
           phoneNumber,
+          fullName: fullName.trim(),
           createdAt: new Date().toISOString(),
           status: 'pending',
+          hasConsent: true,
+          consentTimestamp: new Date().toISOString(),
         },
         // Add a condition to prevent race conditions
         ConditionExpression: 'attribute_not_exists(phoneNumber)',
@@ -66,7 +83,7 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json(
-      { message: 'Phone number registered successfully' },
+      { message: 'Registration successful' },
       { status: 200 }
     );
   } catch (error) {
@@ -78,9 +95,9 @@ export async function POST(req: Request) {
       );
     }
 
-    console.error('Error registering phone number:', error);
+    console.error('Error registering user:', error);
     return NextResponse.json(
-      { error: 'Failed to register phone number' },
+      { error: 'Failed to register' },
       { status: 500 }
     );
   }
