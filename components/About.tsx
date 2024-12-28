@@ -52,7 +52,7 @@ export function About() {
 
     return (
         <Card className="w-full p-3 md:p-8 border-2 border-primary/20">
-            <CardContent className="p-6 md:p-8">
+            <CardContent className="px-0 md:p-8 max-w-[1600px] mx-auto w-full">
                 <h2 className="text-3xl font-bold text-center mb-8 text-primary decorative-border">
                     निमंत्रक परिवार
                 </h2>
@@ -83,7 +83,7 @@ export function About() {
                     <Button
                         variant="outline"
                         size="icon"
-                        className="absolute top-1/2 -left-4 -translate-y-1/2 z-10 bg-background border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                        className="absolute top-1/2 -left-2 md:left-8 -translate-y-1/2 z-10 bg-background border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                         onClick={scrollPrev}
                     >
                         <ChevronLeft className="h-4 w-4" />
@@ -91,7 +91,7 @@ export function About() {
                     <Button
                         variant="outline"
                         size="icon"
-                        className="absolute top-1/2 -right-4 -translate-y-1/2 z-10 bg-background border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                        className="absolute top-1/2 -right-2 md:right-8 -translate-y-1/2 z-10 bg-background border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                         onClick={scrollNext}
                     >
                         <ChevronRight className="h-4 w-4" />

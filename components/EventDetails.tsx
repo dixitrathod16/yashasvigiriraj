@@ -5,7 +5,7 @@ import Image from 'next/image'
 export function EventDetails() {
   return (
     <Card className="w-full p-3 md:p-8 border-2 border-primary/20">
-      <CardContent className="p-6 md:p-8">
+      <CardContent className="px-0 md:p-8 max-w-[1600px] mx-auto w-full">
         <h2 className="text-3xl font-bold text-center mb-8 text-primary decorative-border">
           कार्यक्रम विवरण
         </h2>

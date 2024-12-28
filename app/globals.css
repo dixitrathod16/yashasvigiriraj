@@ -107,12 +107,12 @@ html {
 }
 
 .decorative-border::before {
-  @apply -left-8 top-1/2 -translate-y-1/2 rotate-180;
+  @apply -left-2 md:-left-8 top-1/2 -translate-y-1/2 rotate-180;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFB300'%3E%3Cpath d='M12 1L1 21h22L12 1zm0 3.789L20.848 19H3.152L12 4.789z'/%3E%3C/svg%3E");
 }
 
 .decorative-border::after {
-  @apply -right-8 top-1/2 -translate-y-1/2;
+  @apply -right-2 md:-right-8 top-1/2 -translate-y-1/2;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFB300'%3E%3Cpath d='M12 1L1 21h22L12 1zm0 3.789L20.848 19H3.152L12 4.789z'/%3E%3C/svg%3E");
 }
 
