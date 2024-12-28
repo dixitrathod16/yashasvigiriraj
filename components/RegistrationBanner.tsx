@@ -86,7 +86,7 @@ export function RegistrationBanner() {
     <Card className="w-full p-3 md:p-8 border-2 border-primary/20">
       <CardContent className="px-0 md:p-8 max-w-[1600px] mx-auto w-full">
         <h2 className="text-3xl font-bold text-center mb-4 text-primary decorative-border">
-          पंजीकरण जल्द शुरू होगा!
+          पंजीकरण
         </h2>
         <p className="text-center text-lg mb-6">
           Registrations Opening Soon for this Divine Journey
