@@ -97,9 +97,11 @@ export function VideoCarousel() {
   }, []);
 
   useEffect(() => {
-    if (emblaApi && !isVideoPlaying) {
+    if (emblaApi) {
       const autoplay = setInterval(() => {
-        emblaApi.scrollNext()
+        if (!isVideoPlaying) {
+          emblaApi.scrollNext();
+        }
       }, 5000)
 
       return () => clearInterval(autoplay)
@@ -170,7 +172,7 @@ export function VideoCarousel() {
               {renderContent()}
             </div>
           </div>
-          {!state.isLoading && !state.error && state.videos.length > 0 && (
+          {!state.isLoading && !state.error && state.videos.length > 0 && !isVideoPlaying && (
             <>
               <Button
                 variant="outline"
