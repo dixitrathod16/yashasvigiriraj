@@ -88,8 +88,10 @@ export function NotificationsTable() {
   const handleCancelEdit = (phoneNumber: string) => {
     setSubscribers(prev => prev.map(sub => {
       if (sub.phoneNumber === phoneNumber) {
-        const { isEditing, newFullName, newStatus, ...rest } = sub;
-        return rest;
+        return {
+            ...sub,
+            isEditing: false,
+          };
       }
       return sub;
     }));
