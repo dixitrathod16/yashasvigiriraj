@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     // Generate admin token
-    const token = await encrypt({ role: 'admin' });
+    const token = await encrypt({ role: 'admin', client: 'admin-dashboard' });
     
     // Set admin cookie
     cookies().set('admin-token', token, {
