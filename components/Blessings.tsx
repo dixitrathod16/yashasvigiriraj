@@ -29,14 +29,14 @@ export function Blessings() {
                     <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
                         src="/1.jpg"
-                        alt="प. पू. भक्तियोगाचार्य श्री यशोविजयसुरीश्वरजी महाराजा"
+                        alt="प. पू. भक्तियोगाचार्य श्री यशोविजयसूरीश्वरजी महाराजा"
                         fill
                         style={{ objectFit: 'cover' }}
                         quality={100}
                         priority
                       />
                     </div>
-                    <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसूरिश्वरजी महाराजा</p>
+                    <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसूरीश्वरजी महाराजा</p>
                   </div>
 
                   {/* Second Avatar */}
@@ -44,14 +44,14 @@ export function Blessings() {
                     <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
                         src="/2.jpg"
-                        alt="प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरिश्वरजी महाराजा"
+                        alt="प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरीश्वरजी महाराजा"
                         fill
                         style={{ objectFit: 'cover' }}
                         quality={100}
                         priority
                       />
                     </div>
-                    <p className="m-4 text-xl text-center font-bold text-primary">प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरिश्वरजी महाराजा</p>
+                    <p className="m-4 text-xl text-center font-bold text-primary">प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरीश्वरजी महाराजा</p>
                   </div>
 
                   {/* Third Avatar */}
@@ -107,27 +107,27 @@ export function Blessings() {
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
                         src="/1.jpg"
-                        alt="प. पू. भक्तियोगाचार्य श्री यशोविजयसुरीश्वरजी महाराजा"
+                        alt="प. पू. भक्तियोगाचार्य श्री यशोविजयसूरीश्वरजी महाराजा"
                         fill
                         style={{ objectFit: 'cover' }}
                         quality={100}
                         priority
                       />
                     </div>
-                    <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसूरिश्वरजी महाराजा</p>
+                    <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसूरीश्वरजी महाराजा</p>
                   </div>
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
                         src="/2.jpg"
-                        alt="प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरिश्वरजी महाराजा"
+                        alt="प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरीश्वरजी महाराजा"
                         fill
                         style={{ objectFit: 'cover' }}
                         quality={100}
                         priority
                       />
                     </div>
-                    <p className="m-4 text-xl text-center font-bold text-primary">प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरिश्वरजी महाराजा</p>
+                    <p className="m-4 text-xl text-center font-bold text-primary">प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरीश्वरजी महाराजा</p>
                   </div>
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
