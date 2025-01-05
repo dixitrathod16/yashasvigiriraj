@@ -36,7 +36,7 @@ export function Blessings() {
                         priority
                       />
                     </div>
-                    <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसुरीश्वरजी महाराजा</p>
+                    <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसूरिश्वरजी महाराजा</p>
                   </div>
 
                   {/* Second Avatar */}
@@ -114,7 +114,7 @@ export function Blessings() {
                         priority
                       />
                     </div>
-                    <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसुरीश्वरजी महाराजा</p>
+                    <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसूरिश्वरजी महाराजा</p>
                   </div>
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
