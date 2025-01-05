@@ -32,6 +32,8 @@ export function Blessings() {
                         alt="प. पू. भक्तियोगाचार्य श्री यशोविजयसुरीश्वरजी महाराजा"
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसुरीश्वरजी महाराजा</p>
@@ -45,6 +47,8 @@ export function Blessings() {
                         alt="प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरिश्वरजी महाराजा"
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरिश्वरजी महाराजा</p>
@@ -58,6 +62,8 @@ export function Blessings() {
                         alt="मुनिराज श्री आध्यात्मयोग विजयजी म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री आध्यात्मयोग विजयजी म.सा.</p>
@@ -71,6 +77,7 @@ export function Blessings() {
                         alt="प. पू. सा. श्री प्रार्थनाश्रीजी म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">प. पू. सा. श्री प्रार्थनाश्रीजी म.सा.</p>
@@ -84,6 +91,7 @@ export function Blessings() {
                         alt="प. पू. सा. श्री अर्हंप्रभाश्रीजी  म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">प. पू. सा. श्री अर्हंप्रभाश्रीजी  म.सा.</p>
@@ -102,6 +110,8 @@ export function Blessings() {
                         alt="प. पू. भक्तियोगाचार्य श्री यशोविजयसुरीश्वरजी महाराजा"
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">प. पू. भक्तियोगाचार्य श्री यशोविजयसुरीश्वरजी महाराजा</p>
@@ -113,6 +123,8 @@ export function Blessings() {
                         alt="प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरिश्वरजी महाराजा"
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">प्रभु़ वत्सल प. पू. आ. श्री कल्पज्ञविजयसूरिश्वरजी महाराजा</p>
@@ -124,6 +136,8 @@ export function Blessings() {
                         alt="मुनिराज श्री आध्यात्मयोग विजयजी म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री आध्यात्मयोग विजयजी म.सा.</p>
@@ -139,6 +153,7 @@ export function Blessings() {
                         alt="प. पू. सा. श्री प्रार्थनाश्रीजी म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">प. पू. सा. श्री प्रार्थनाश्रीजी म.सा.</p>
@@ -150,6 +165,7 @@ export function Blessings() {
                         alt="प. पू. सा. श्री अर्हंप्रभाश्रीजी  म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
+                        quality={100}
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">प. पू. सा. श्री अर्हंप्रभाश्रीजी  म.सा.</p>
