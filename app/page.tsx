@@ -7,6 +7,8 @@ import { RegistrationBanner } from '@/components/RegistrationBanner'
 import { ContactUs } from '@/components/ContactUs'
 import { About } from '@/components/About'
 import { ImageCarousel } from '@/components/ImageCarousel'
+import { JeevithMahotsav } from '@/components/JeevithMahotsav'
+import { Blessings } from '@/components/Blessings'
 
 // This is a Server Component by default
 export default function Home() {
@@ -18,6 +20,9 @@ export default function Home() {
           <HeroSection />
         </section>
         <div className="container mx-auto px-2 md:px-10 py-3 md:py-5 space-y-16">
+          <section id="blessings">
+            <Blessings />
+          </section>
           <section id="videos">
             <VideoCarousel />
           </section>
@@ -29,6 +34,9 @@ export default function Home() {
           </section>
           <section id="about-us">
             <About />
+          </section>
+          <section id="jeevith-mahotsav">
+            <JeevithMahotsav />
           </section>
           <section id="event-details">
             <EventDetails />
