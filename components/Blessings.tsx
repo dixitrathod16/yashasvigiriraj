@@ -131,7 +131,7 @@ export function Blessings() {
                 </div>
 
                 {/* Second Row - 2 images */}
-                <div className="grid grid-cols-2 gap-6 px-16">
+                <div className="grid grid-cols-2 gap-6 px-36">
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
