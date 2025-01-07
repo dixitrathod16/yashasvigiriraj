@@ -29,31 +29,50 @@ export async function middleware(request: NextRequest) {
     if (!payload || payload.role !== 'admin') {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-  }
-
-  // For API routes, validate the token
-  if (request.nextUrl.pathname.startsWith('/api')) {
-    const isValidToken = await validateClientToken(request)
     
-    if (!isValidToken) {
+    return NextResponse.next();
+  }
+
+  // For API routes
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    try {
+      const isValidToken = await validateClientToken(request);
+      
+      if (!isValidToken) {
+        // For API routes that don't require validation
+        if (request.nextUrl.pathname === '/api/register' || request.nextUrl.pathname === '/api/admin/login') {
+          return NextResponse.next();
+        }
+        
+        return NextResponse.json(
+          { error: 'Unauthorized access' },
+          { status: 401 }
+        );
+      }
+      
+      return NextResponse.next();
+    } catch (error) {
+      console.error('API route error:', error);
       return NextResponse.json(
-        { error: 'Unauthorized access' },
-        { status: 401 }
-      )
+        { error: 'Internal server error' },
+        { status: 500 }
+      );
     }
-    return NextResponse.next()
   }
 
-  // For non-API routes, ensure client has a valid token
-  const hasValidToken = await validateClientToken(request)
-  if (!hasValidToken) {
-    const response = NextResponse.next()
-    // Generate and set token in cookie
-    await generateClientToken(response)
-    return response
+  // For regular routes (non-API, non-admin)
+  try {
+    const hasValidToken = await validateClientToken(request);
+    if (!hasValidToken) {
+      const response = NextResponse.next();
+      await generateClientToken(response);
+      return response;
+    }
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Regular route error:', error);
+    return NextResponse.next();
   }
-
-  return NextResponse.next()
 }
 
 export const config = {
@@ -64,7 +83,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public files (images, etc)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:jpg|jpeg|gif|png|webp|svg)).*)',
   ],
 } 
