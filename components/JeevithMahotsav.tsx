@@ -7,13 +7,13 @@ import { motion } from 'framer-motion'
 const images = [
     {
         id: '1',
-        src: '/Bade Mama and Mami.png',
+        src: '/Bade Mama and Mami.jpg',
         alt: 'Image of Amritlalji and Manibai',
         description: 'श्रीमती मनीबाई अमृतलालजी जैन'
     },
     {
         id: '2',
-        src: '/Chota Mama and Mami.png',
+        src: '/Chota Mama and Mami.jpg',
         alt: 'Image of Devichandji and Lalita Bai',
         description: 'श्रीमती ललिता देवीचंदजी जैन'
     }
