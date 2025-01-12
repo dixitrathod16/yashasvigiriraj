@@ -35,6 +35,7 @@ export async function GET() {
     const headersList = headers();
     const referer = headersList.get('referer');
     if (!referer || !referer.includes(process.env.NEXT_PUBLIC_SITE_URL || '')) {
+      console.log(`Referer: ${referer}`);
       return NextResponse.json(
         { error: 'Invalid request origin' },
         { status: 403 }
@@ -45,13 +46,18 @@ export async function GET() {
     const cachedData = await getCachedData<VideoData>(CACHE_KEY);
     
     if (cachedData) {
-      console.log('Returning cached YouTube data');
       return NextResponse.json(cachedData);
     }
 
-    console.log('Fetching fresh YouTube data');
     const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
     const YOUTUBE_PLAYLIST_ID = process.env.YOUTUBE_PLAYLIST_ID;
+
+    if (!YOUTUBE_API_KEY || !YOUTUBE_PLAYLIST_ID) {
+      return NextResponse.json(
+        { error: 'Missing required configuration (YOUTUBE_API_KEY or YOUTUBE_PLAYLIST_ID)' },
+        { status: 400 }
+      );
+    }
 
     const playListResponse = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${YOUTUBE_PLAYLIST_ID}&maxResults=20&key=${YOUTUBE_API_KEY}`);
 
@@ -77,7 +83,6 @@ export async function GET() {
     // Cache the response
     if (videos.length) {
       await setCachedData(CACHE_KEY, responseData, 7200);
-      console.log('Cached new YouTube data');
     }
 
     return NextResponse.json(responseData);
