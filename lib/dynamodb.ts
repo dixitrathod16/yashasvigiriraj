@@ -1,8 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
-console.log(`Environment Variable, ${JSON.stringify(process.env)}`);
-
 const client = new DynamoDBClient({
   credentials: {
     accessKeyId: process.env.ACCESS_KEY_ID || '',
