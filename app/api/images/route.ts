@@ -72,6 +72,9 @@ export async function GET() {
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
     const apiKey = process.env.GOOGLE_API_KEY;
 
+    console.log(`folderId: ${folderId}`);
+    console.log(`apiKey: ${apiKey}`);
+
     if (!folderId || !apiKey) {
       return NextResponse.json(
         { error: 'Missing required configuration (GOOGLE_DRIVE_FOLDER_ID or GOOGLE_API_KEY)' },
