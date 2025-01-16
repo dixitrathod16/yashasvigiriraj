@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { QueryCommand, QueryCommandOutput, DeleteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { dynamoDb } from '@/lib/dynamodb';
-import { headers } from 'next/headers';
 
 const TABLE_NAME = 'registration_notifications';
 
@@ -39,16 +38,6 @@ async function getAllSubscribers() {
 
 export async function GET() {
   try {
-    const headersList = headers();
-    const adminToken = headersList.get('Cookie')?.includes('admin-token');
-
-    if (!adminToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const subscribers = await getAllSubscribers();
 
     return NextResponse.json({

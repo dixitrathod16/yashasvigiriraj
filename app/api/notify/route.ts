@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { dynamoDb } from '@/lib/dynamodb';
-import { headers } from 'next/headers';
 
 const TABLE_NAME = 'registration_notifications';
 const RECORD_TYPE = 'notification';
@@ -12,16 +11,6 @@ interface DynamoDBError extends Error {
 
 export async function POST(req: Request) {
   try {
-    // Validate the request is from our UI
-    const headersList = headers();
-    const referer = headersList.get('referer');
-    if (!referer || !referer.includes(process.env.NEXT_PUBLIC_SITE_URL || '')) {
-      return NextResponse.json(
-        { error: 'Invalid request origin' },
-        { status: 403 }
-      );
-    }
-
     const { phoneNumber, fullName, hasConsent } = await req.json();
     
     // Validate inputs

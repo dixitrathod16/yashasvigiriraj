@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { getCachedData, setCachedData } from '@/lib/cache';
 
 interface ImageFile {
@@ -47,17 +46,6 @@ async function fetchPublicGoogleDriveImages(folderId: string, apiKey: string): P
 
 export async function GET() {
   try {
-    // Validate the request is from our UI
-    const headersList = headers();
-    const referer = headersList.get('referer');
-    if (!referer || !referer.includes(process.env.NEXT_PUBLIC_SITE_URL || '')) {
-      console.log(`Referer: ${referer}`);
-      return NextResponse.json(
-        { error: 'Invalid request origin' },
-        { status: 403 }
-      );
-    }
-
     // Try to get cached data
     const cachedData = await getCachedData<ImageData>(CACHE_KEY);
 

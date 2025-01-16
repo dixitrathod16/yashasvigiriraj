@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { headers, cookies } from 'next/headers';
 import { validateClientToken, generateClientToken, decrypt } from '@/lib/auth'
 
 export async function middleware(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // For all other admin routes, check authentication
-    const adminToken = request.cookies.get('admin-token')?.value;
+    const adminToken = cookies().get('admin-token')?.value;
     
     if (!adminToken) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
@@ -33,8 +34,18 @@ export async function middleware(request: NextRequest) {
 
   // For API routes, validate the token
   if (request.nextUrl.pathname.startsWith('/api')) {
+    // Check referrer for API routes
+    const headersList = headers();
+    const referer = headersList.get('referer');
+    if (!referer || !referer.includes(process.env.NEXT_PUBLIC_SITE_URL || '')) {
+      console.log(`Invalid referer: ${referer}`);
+      return NextResponse.json(
+        { error: 'Invalid request origin' },
+        { status: 403 }
+      );
+    }
+
     const isValidToken = await validateClientToken(request)
-    
     if (!isValidToken) {
       return NextResponse.json(
         { error: 'Unauthorized access' },
