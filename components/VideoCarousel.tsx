@@ -78,7 +78,15 @@ export function VideoCarousel() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
+        // Wait for client token to be set
+        while (!document.cookie.includes('client-token')) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
         const response = await fetch('/api/youtube');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         const uniqueVideos = data.videos.map((video: { id: string }) => video.id)
         setState(prev => ({

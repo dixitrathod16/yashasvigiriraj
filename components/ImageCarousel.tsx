@@ -76,7 +76,15 @@ export function ImageCarousel() {
   useEffect(() => {
     const fetchImages = async () => {
       try {
+        // Wait for client token to be set
+        while (!document.cookie.includes('client-token')) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
         const response = await fetch('/api/images');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data: ImageData = await response.json();
         setState(prev => ({
           ...prev,
