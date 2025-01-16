@@ -74,18 +74,21 @@ export function ImageCarousel() {
   }, [emblaApi])
 
   useEffect(() => {
-    const fetchImages = async () => {
+    const checkAuthAndFetchImages = async () => {
       try {
-        // Wait for client token to be set
-        while (!document.cookie.includes('client-token')) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+        // Make a test request to check if we're authenticated
+        const testResponse = await fetch('/api/images');
+        if (testResponse.status === 401) {
+          // If not authenticated, wait a bit and retry
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return checkAuthAndFetchImages();
         }
         
-        const response = await fetch('/api/images');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (!testResponse.ok) {
+          throw new Error(`HTTP error! status: ${testResponse.status}`);
         }
-        const data: ImageData = await response.json();
+        
+        const data: ImageData = await testResponse.json();
         setState(prev => ({
           ...prev,
           isLoading: false,
@@ -101,7 +104,7 @@ export function ImageCarousel() {
         console.error('Error fetching images:', error);
       }
     }
-    fetchImages();
+    checkAuthAndFetchImages();
   }, []);
 
   useEffect(() => {

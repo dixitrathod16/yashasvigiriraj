@@ -65,29 +65,38 @@ export function VideoCarousel() {
 
   // Load YouTube IFrame API
   useEffect(() => {
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    const loadYouTubeAPI = async () => {
+      return new Promise<void>((resolve) => {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
-    window.onYouTubeIframeAPIReady = () => {
-      console.log('YouTube API Ready');
+        window.onYouTubeIframeAPIReady = () => {
+          console.log('YouTube API Ready');
+          resolve();
+        };
+      });
     };
-  }, []);
 
-  useEffect(() => {
-    const fetchVideos = async () => {
+    const checkAuthAndFetchVideos = async () => {
       try {
-        // Wait for client token to be set
-        while (!document.cookie.includes('client-token')) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+        // Load YouTube API first
+        await loadYouTubeAPI();
+        
+        // Make a test request to check if we're authenticated
+        const testResponse = await fetch('/api/youtube');
+        if (testResponse.status === 401) {
+          // If not authenticated, wait a bit and retry
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return checkAuthAndFetchVideos();
         }
         
-        const response = await fetch('/api/youtube');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (!testResponse.ok) {
+          throw new Error(`HTTP error! status: ${testResponse.status}`);
         }
-        const data = await response.json();
+        
+        const data = await testResponse.json();
         const uniqueVideos = data.videos.map((video: { id: string }) => video.id)
         setState(prev => ({
           ...prev,
@@ -103,7 +112,7 @@ export function VideoCarousel() {
         console.error('Error fetching videos:', error);
       }
     }
-    fetchVideos();
+    checkAuthAndFetchVideos();
   }, []);
 
   useEffect(() => {
