@@ -55,16 +55,6 @@ export async function GET() {
 
 export async function DELETE(request: Request) {
   try {
-    const headersList = headers();
-    const adminToken = headersList.get('Cookie')?.includes('admin-token');
-
-    if (!adminToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const { phoneNumber } = await request.json();
 
     await dynamoDb.send(
@@ -89,16 +79,6 @@ export async function DELETE(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const headersList = headers();
-    const adminToken = headersList.get('Cookie')?.includes('admin-token');
-
-    if (!adminToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const { phoneNumber, fullName, status } = await request.json();
 
     await dynamoDb.send(
