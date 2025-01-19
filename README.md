@@ -32,22 +32,6 @@ A Next.js-based website for managing event registrations and notifications, buil
 - Google Cloud Project (for Drive API)
 - npm or yarn or pnpm or bun
 
-## Environment Variables
-
-Create a `.env.local` file in the root directory with the following variables:
-```json
-ACCESS_KEY_ID=<Replace with your_aws_access_key>
-SECRET_ACCESS_KEY=<Replace with your_aws_secret_key>
-REGION=<Replace with your_aws_region>
-YOUTUBE_API_KEY=<Replace with your_google_api_key>
-YOUTUBE_PLAYLIST_ID=<Replace with your youtube playlist id>
-GOOGLE_DRIVE_FOLDER_ID=<Replace with your_drive_folder_id>
-GOOGLE_API_KEY=<Replace with your_google_api_key>
-API_SECRET_KEY=<Replace with your_jwt_secret_key>
-ADMIN_SECRET_KEY=<Replace with the password you want to use to login to admin dashboard>
-NEXT_PUBLIC_SITE_URL=<http://localhost:3000 in local or your custom domain in production>
-```
-
 ## Getting Started
 
 1. Clone the repository:
@@ -62,17 +46,32 @@ cd yashasvigiriraj
 npm install
 ```
 
-3. Generate API secret key:
+3. Generate API secret key and use it for API_SECRET_KEY in next step:
 ```bash
 npm run generate-key
 ```
 
-4. Run the development server:
+4. Environment Variables
+Create a `.env.local` file in the root directory with the following variables:
+```json
+ACCESS_KEY_ID=<Replace with your_aws_access_key>
+SECRET_ACCESS_KEY=<Replace with your_aws_secret_key>
+REGION=<Replace with your_aws_region>
+YOUTUBE_API_KEY=<Replace with your_google_api_key>
+YOUTUBE_PLAYLIST_ID=<Replace with your youtube playlist id>
+GOOGLE_DRIVE_FOLDER_ID=<Replace with your_drive_folder_id>
+GOOGLE_API_KEY=<Replace with your_google_api_key>
+API_SECRET_KEY=<Replace with your newly generated jwt_secret_key>
+ADMIN_SECRET_KEY=<Replace with the password you want to use to login to admin dashboard>
+NEXT_PUBLIC_SITE_URL=<http://localhost:3000 in local or your custom domain in production>
+```
+
+5. Run the development server:
 ```bash
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## DynamoDB Setup
 
