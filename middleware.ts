@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
 
   // For API routes, validate the token
   if (request.nextUrl.pathname.startsWith('/api')) {
-    // Check referrer for API routes
+    // First, check if the request is from our UI
     const referer = request.headers.get('referer');
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
     
@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
       refererHost = null;
     }
 
-    // Check if referer hostname matches allowed hostname
+    // If not from our UI, reject immediately
     if (!referer || !refererHost || !refererHost.includes(allowedHost)) {
       console.log(`Invalid referer: ${referer}, allowed host: ${allowedHost}`);
       return NextResponse.json(
@@ -63,13 +63,15 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    const isValidToken = await validateClientToken(request)
-    if (!isValidToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized access' },
-        { status: 401 }
-      )
+    // If from our UI but no valid token, generate one
+    const hasValidToken = await validateClientToken(request)
+    if (!hasValidToken) {
+      const response = NextResponse.next()
+      await generateClientToken(response)
+      return response
     }
+
+    // If from our UI and has valid token, proceed
     return NextResponse.next()
   }
 
