@@ -45,6 +45,12 @@ const categories = [
   }
 ];
 
+interface UploadUrlResponse {
+  url: string;
+  key: string;
+  uploadType: 'photo' | 'aadhar';
+}
+
 export default function RegisterPage() {
   // States for the form
   const [step, setStep] = useState<'categories' | 'form' | 'success'>('categories');
@@ -66,11 +72,14 @@ export default function RegisterPage() {
     linkedForm?: string;
     hasParticipatedBefore?: boolean;
     photoPreview?: string;
+    aadharPreview?: string;
   }>({
     gender: 'M' // Set default gender value
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [aadharFile, setAadharFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [aadharPreview, setAadharPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
@@ -91,10 +100,27 @@ export default function RegisterPage() {
     whatsappNumber?: string;
     emergencyContact?: string;
     photo?: string;
+    aadharCard?: string;
   }>({});
+  const [photoInputKey, setPhotoInputKey] = useState(0);
+  const [aadharInputKey, setAadharInputKey] = useState(0);
 
   // Handler for category selection
   const handleCategorySelect = (categoryId: 'SAN' | 'CHA' | 'NAV') => {
+    // Reset all form data
+    setFormData({
+      gender: 'M' // Set default gender value
+    });
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setAadharFile(null);
+    setAadharPreview(null);
+    setSavedPhotoPreview(null);
+    setError(null);
+    setFormErrors({});
+    setRegistrationId(null);
+    
+    // Set new category and step
     setFormType(categoryId);
     setStep('form');
     setPreviousYatraMessage(categories.find(c => c.id === categoryId)?.previousYatraMessage || null);
@@ -191,17 +217,137 @@ export default function RegisterPage() {
   // Handler for photo upload
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-
-    if (file) {
-      setPhotoFile(file);
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) {
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      setFormData(prev => ({ ...prev, photo: null }));
+      return;
     }
+
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+      setFormErrors(prev => ({
+        ...prev,
+        photo: 'Please upload a valid image file (JPG, PNG)'
+      }));
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      setFormData(prev => ({ ...prev, photo: null }));
+      return;
+    }
+
+    // Validate file size (4MB limit)
+    if (file.size > 4 * 1024 * 1024) {
+      setFormErrors(prev => ({
+        ...prev,
+        photo: 'File size should be less than 4MB'
+      }));
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      setFormData(prev => ({ ...prev, photo: null }));
+      return;
+    }
+
+    // Clear any existing errors
+    setFormErrors(prev => ({ ...prev, photo: undefined }));
+
+    // Set the file state
+    setPhotoFile(file);
+    setFormData(prev => ({ ...prev, photo: file }));
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) {
+        setPhotoPreview(reader.result as string);
+      }
+    };
+    reader.onerror = () => {
+      setFormErrors(prev => ({
+        ...prev,
+        photo: 'Error reading the file'
+      }));
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      setFormData(prev => ({ ...prev, photo: null }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handler for Aadhar card upload
+  const handleAadharChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setAadharPreview(null);
+      setAadharFile(null);
+      setFormData(prev => ({ ...prev, aadharCard: null }));
+      return;
+    }
+
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+      setFormErrors(prev => ({
+        ...prev,
+        aadharCard: 'Please upload a valid image file (JPG, PNG)'
+      }));
+      setAadharPreview(null);
+      setAadharFile(null);
+      setFormData(prev => ({ ...prev, aadharCard: null }));
+      return;
+    }
+
+    // Validate file size (4MB limit)
+    if (file.size > 4 * 1024 * 1024) {
+      setFormErrors(prev => ({
+        ...prev,
+        aadharCard: 'File size should be less than 4MB'
+      }));
+      setAadharPreview(null);
+      setAadharFile(null);
+      setFormData(prev => ({ ...prev, aadharCard: null }));
+      return;
+    }
+
+    // Clear any existing errors
+    setFormErrors(prev => ({ ...prev, aadharCard: undefined }));
+
+    // Set the file state
+    setAadharFile(file);
+    setFormData(prev => ({ ...prev, aadharCard: file }));
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) {
+        setAadharPreview(reader.result as string);
+      }
+    };
+    reader.onerror = () => {
+      setFormErrors(prev => ({
+        ...prev,
+        aadharCard: 'Error reading the file'
+      }));
+      setAadharPreview(null);
+      setAadharFile(null);
+      setFormData(prev => ({ ...prev, aadharCard: null }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handler for clearing photo
+  const handleClearPhoto = () => {
+    setPhotoPreview(null);
+    setPhotoFile(null);
+    setFormData(prev => ({ ...prev, photo: null }));
+    setPhotoInputKey(prev => prev + 1);
+  };
+
+  // Handler for clearing Aadhar
+  const handleClearAadhar = () => {
+    setAadharPreview(null);
+    setAadharFile(null);
+    setFormData(prev => ({ ...prev, aadharCard: null }));
+    setAadharInputKey(prev => prev + 1);
   };
 
   // Function to validate the form data
@@ -287,11 +433,20 @@ export default function RegisterPage() {
 
     // Validate photo
     if (!photoFile) {
-      errors.photo = "फोटो आवश्यक है / Photo is required";
-    } else if (photoFile.size > 5 * 1024 * 1024) { // 5MB limit
-      errors.photo = "फोटो 5MB से कम होना चाहिए / Photo should be less than 5MB";
+      errors.photo = "पासपोर्ट फोटो आवश्यक है / Passport photo is required";
+    } else if (photoFile.size > 4 * 1024 * 1024) { // 4MB limit
+      errors.photo = "फोटो 4MB से कम होना चाहिए / Photo should be less than 4MB";
     } else if (!['image/jpeg', 'image/png', 'image/jpg'].includes(photoFile.type)) {
       errors.photo = "फोटो JPG या PNG फॉर्मेट में होना चाहिए / Photo should be in JPG or PNG format";
+    }
+
+    // Validate Aadhar card
+    if (!aadharFile) {
+      errors.aadharCard = "आधार कार्ड आवश्यक है / Aadhar card is required";
+    } else if (aadharFile.size > 4 * 1024 * 1024) { // 4MB limit
+      errors.aadharCard = "आधार कार्ड 4MB से कम होना चाहिए / Aadhar card should be less than 4MB";
+    } else if (!['image/jpeg', 'image/png', 'image/jpg'].includes(aadharFile.type)) {
+      errors.aadharCard = "आधार कार्ड JPG या PNG फॉर्मेट में होना चाहिए / Aadhar card should be in JPG or PNG format";
     }
 
     setFormErrors(errors);
@@ -304,60 +459,120 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-    // Validate form before submission
-    if (!validateForm()) {
+    // First validate the form
+    const isValid = validateForm();
+    
+    if (!isValid) {
       setLoading(false);
-      // Set a general error message
-      setError("कृपया सभी आवश्यक फ़ील्ड को सही तरीके से भरें / Please fill all required fields correctly");
+      
+      // Create a more descriptive error message
+      const missingFields = Object.entries(formErrors)
+        .filter(([, value]) => value)
+        .map(([key]) => {
+          switch (key) {
+            case 'photo':
+              return 'पासपोर्ट फोटो / Passport Photo';
+            case 'aadharCard':
+              return 'आधार कार्ड / Aadhar Card';
+            case 'fullName':
+              return 'पूरा नाम / Full Name';
+            case 'age':
+              return 'उम्र / Age';
+            case 'guardianName':
+              return 'पिता/पति का नाम / Father\'s/Husband\'s Name';
+            case 'address':
+              return 'पता / Address';
+            case 'city':
+              return 'शहर / City';
+            case 'pinCode':
+              return 'पिन कोड / Pin Code';
+            case 'village':
+              return 'गाँव / Village';
+            case 'aadharNumber':
+              return 'आधार नंबर / Aadhar Number';
+            case 'phoneNumber':
+              return 'फोन नंबर / Phone Number';
+            case 'whatsappNumber':
+              return 'व्हाट्सऐप नंबर / WhatsApp Number';
+            case 'emergencyContact':
+              return 'आपातकालीन नंबर / Emergency Number';
+            default:
+              return key;
+          }
+        });
 
-      // Scroll to the top of the page to show error message
+      // Set the error message
+      setError(`कृपया निम्नलिखित फ़ील्ड भरें / Please fill the following fields: ${missingFields.join(', ')}`);
+      
+      // Scroll to the top of the form
       window.scrollTo({
         top: 0,
         behavior: 'smooth'
       });
-
+      
       return;
     }
 
     try {
-      // Step 1: Get pre-signed URL for photo upload
-      if (!photoFile) {
-        throw new Error('Please upload a passport size photo');
+      // Step 1: Get pre-signed URLs for both files
+      if (!photoFile || !aadharFile) {
+        throw new Error('Please upload both passport photo and Aadhar card');
       }
 
       // Save photo preview for PDF generation
       setSavedPhotoPreview(photoPreview);
 
+      // Get pre-signed URLs for both files in a single request
       const uploadUrlResponse = await fetch('/api/upload-url', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          fileType: photoFile.type
+          files: [
+            {
+              fileType: photoFile.type,
+              uploadType: 'photo'
+            },
+            {
+              fileType: aadharFile.type,
+              uploadType: 'aadhar'
+            }
+          ]
         }),
       });
 
       if (!uploadUrlResponse.ok) {
-        throw new Error('Failed to get upload URL');
+        throw new Error('Failed to get upload URLs');
       }
 
-      const { url, key } = await uploadUrlResponse.json();
+      const { uploadUrls } = await uploadUrlResponse.json();
+      const photoUpload = uploadUrls.find((u: UploadUrlResponse) => u.uploadType === 'photo');
+      const aadharUpload = uploadUrls.find((u: UploadUrlResponse) => u.uploadType === 'aadhar');
 
-      // Step 2: Upload photo to S3
-      const uploadResponse = await fetch(url, {
-        method: 'PUT',
-        body: photoFile,
-        headers: {
-          'Content-Type': photoFile.type,
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload photo');
+      if (!photoUpload || !aadharUpload) {
+        throw new Error('Failed to get upload URLs');
       }
 
-      // Step 3: Submit form data with image key
+      // Upload both files to S3 in parallel
+      await Promise.all([
+        fetch(photoUpload.url, {
+          method: 'PUT',
+          body: photoFile,
+          headers: {
+            'Content-Type': photoFile.type,
+          },
+        }),
+        fetch(aadharUpload.url, {
+          method: 'PUT',
+          body: aadharFile,
+          headers: {
+            'Content-Type': aadharFile.type,
+          },
+        }),
+      ]);
+
+      // Step 3: Submit form data with image keys
       const registerResponse = await fetch('/api/register', {
         method: 'POST',
         headers: {
@@ -366,7 +581,8 @@ export default function RegisterPage() {
         body: JSON.stringify({
           ...formData,
           formType,
-          imageKey: key,
+          photoKey: photoUpload.key,
+          aadharKey: aadharUpload.key,
         }),
       });
 
@@ -383,14 +599,10 @@ export default function RegisterPage() {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Something went wrong';
       setError(errorMessage);
-
-      // Scroll to the top of the page to show error message
       window.scrollTo({
         top: 0,
         behavior: 'smooth'
       });
-
-      return;
     } finally {
       setLoading(false);
     }
@@ -398,16 +610,24 @@ export default function RegisterPage() {
 
   // Handler for new registration
   const handleNewRegistration = () => {
-    setStep('categories');
-    setFormType(null);
+    // Reset all form data
     setFormData({
-      gender: 'M'
+      gender: 'M' // Set default gender value
     });
     setPhotoFile(null);
     setPhotoPreview(null);
+    setAadharFile(null);
+    setAadharPreview(null);
+    setSavedPhotoPreview(null);
     setError(null);
     setFormErrors({});
     setRegistrationId(null);
+    
+    // Reset category and step
+    setStep('categories');
+    setFormType(null);
+    setPreviousYatraMessage(null);
+    setBottomText(null);
   };
 
   // Function to generate and download PDF
@@ -722,7 +942,7 @@ export default function RegisterPage() {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="fullName" className="text-base font-medium">
                       आराधक का पूरा नाम / Full Name
@@ -999,34 +1219,125 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                <div className="space-y-4">
-                  <Label className="text-base font-medium">
-                    पासपोर्ट साइज़ फोटो / Passport Size Photo
-                  </Label>
-                  <div className="flex flex-col md:flex-col gap-4 items-start">
-                    <Input
-                      id="photo"
-                      name="photo"
-                      type="file"
-                      accept="image/jpeg,image/png,image/jpg"
-                      required
-                      onChange={handlePhotoChange}
-                      className={`max-w-xs ${formErrors.photo ? "border-red-500" : ""}`}
-                    />
-                    {formErrors.photo && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.photo}</p>
-                    )}
-
-                    {photoPreview && (
-                      <div className="relative w-32 h-40 border border-gray-300">
-                        <Image
-                          src={photoPreview}
-                          alt="Passport size photo preview"
-                          fill
-                          style={{ objectFit: 'cover' }}
-                        />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium">
+                      पासपोर्ट साइज़ फोटो / Passport Size Photo
+                    </Label>
+                    <div className="flex flex-col gap-4 items-start">
+                      <div className="relative">
+                        <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${
+                          formErrors.photo ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
+                        }`}>
+                          {photoPreview ? (
+                            <div className="relative w-full h-full">
+                              <Image
+                                src={photoPreview}
+                                alt="Passport size photo preview"
+                                fill
+                                style={{ objectFit: 'cover' }}
+                                className="rounded-lg"
+                              />
+                              <button
+                                onClick={handleClearPhoto}
+                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <label htmlFor="photo" className="cursor-pointer text-center p-4">
+                              <div className="flex flex-col items-center">
+                                <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-xs text-gray-500">Click to upload</span>
+                                <span className="text-[10px] text-gray-400">JPG, PNG (max. 4MB)</span>
+                              </div>
+                            </label>
+                          )}
+                          <Input
+                            id="photo"
+                            name="photo"
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg"
+                            onChange={handlePhotoChange}
+                            className="hidden"
+                            key={`photo-${photoInputKey}`}
+                          />
+                        </div>
                       </div>
-                    )}
+                      {formErrors.photo && (
+                        <div className="flex items-center gap-2 text-red-500 text-sm">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p>{formErrors.photo}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium">
+                      आधार कार्ड / Aadhar Card
+                    </Label>
+                    <div className="flex flex-col gap-4 items-start">
+                      <div className="relative">
+                        <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${
+                          formErrors.aadharCard ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
+                        }`}>
+                          {aadharPreview ? (
+                            <div className="relative w-full h-full">
+                              <Image
+                                src={aadharPreview}
+                                alt="Aadhar card preview"
+                                fill
+                                style={{ objectFit: 'cover' }}
+                                className="rounded-lg"
+                              />
+                              <button
+                                onClick={handleClearAadhar}
+                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <label htmlFor="aadharCard" className="cursor-pointer text-center p-4">
+                              <div className="flex flex-col items-center">
+                                <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-xs text-gray-500">Click to upload</span>
+                                <span className="text-[10px] text-gray-400">JPG, PNG (max. 4MB)</span>
+                              </div>
+                            </label>
+                          )}
+                          <Input
+                            id="aadharCard"
+                            name="aadharCard"
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg"
+                            onChange={handleAadharChange}
+                            className="hidden"
+                            key={`aadhar-${aadharInputKey}`}
+                          />
+                        </div>
+                      </div>
+                      {formErrors.aadharCard && (
+                        <div className="flex items-center gap-2 text-red-500 text-sm">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p>{formErrors.aadharCard}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
