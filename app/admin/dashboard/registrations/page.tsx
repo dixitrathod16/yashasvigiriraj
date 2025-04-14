@@ -13,13 +13,34 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import Image from "next/image";
 
 interface Registration {
   id: string;
   fullName: string;
+  age: string;
+  gender: 'M' | 'F';
   guardianName: string;
-  phoneNumber: string;
+  address: string;
   city: string;
+  pinCode: string;
+  village: string;
+  aadharNumber: number;
+  phoneNumber: number;
+  whatsappNumber: number;
+  emergencyContact: number;
+  existingTapasya?: string;
+  linkedForm?: string;
+  hasParticipatedBefore: boolean;
+  photoKey: string;
+  aadharKey: string;
+  formType: 'SAN' | 'CHA' | 'NAV';
   createdAt: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
@@ -29,6 +50,9 @@ export default function RegistrationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -77,10 +101,20 @@ export default function RegistrationsPage() {
     }
   };
 
+  const handleViewDetails = (registration: Registration) => {
+    setSelectedRegistration(registration);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleEdit = (registration: Registration) => {
+    setSelectedRegistration(registration);
+    setIsEditDialogOpen(true);
+  };
+
   const filteredRegistrations = registrations.filter(reg =>
-    reg.id.toLowerCase().includes(searchTerm) ||
+    reg.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     reg.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    reg.phoneNumber.includes(searchTerm)
+    reg.phoneNumber.toString().includes(searchTerm)
   );
 
   if (loading) {
@@ -117,6 +151,20 @@ export default function RegistrationsPage() {
               <p>Date: {new Date(reg.createdAt).toLocaleDateString()}</p>
             </div>
             <div className="flex gap-2 pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleViewDetails(reg)}
+              >
+                View Details
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleEdit(reg)}
+              >
+                Edit
+              </Button>
               <Button
                 size="sm"
                 variant={reg.status === 'APPROVED' ? 'outline' : 'default'}
@@ -188,6 +236,20 @@ export default function RegistrationsPage() {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => handleViewDetails(reg)}
+                    >
+                      View Details
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(reg)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
                       variant={reg.status === 'APPROVED' ? 'outline' : 'default'}
                       onClick={() => handleStatusChange(reg.id, 'APPROVED')}
                       disabled={reg.status === 'APPROVED'}
@@ -209,6 +271,99 @@ export default function RegistrationsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* View Details Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registration Details</DialogTitle>
+          </DialogHeader>
+          {selectedRegistration && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold">Personal Information</h3>
+                  <div className="space-y-2 mt-2">
+                    <p><span className="font-medium">Full Name:</span> {selectedRegistration.fullName}</p>
+                    <p><span className="font-medium">Age:</span> {selectedRegistration.age}</p>
+                    <p><span className="font-medium">Gender:</span> {selectedRegistration.gender === 'M' ? 'Male' : 'Female'}</p>
+                    <p><span className="font-medium">Guardian Name:</span> {selectedRegistration.guardianName}</p>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Contact Information</h3>
+                  <div className="space-y-2 mt-2">
+                    <p><span className="font-medium">Phone:</span> {selectedRegistration.phoneNumber}</p>
+                    <p><span className="font-medium">WhatsApp:</span> {selectedRegistration.whatsappNumber}</p>
+                    <p><span className="font-medium">Emergency Contact:</span> {selectedRegistration.emergencyContact}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold">Address</h3>
+                  <div className="space-y-2 mt-2">
+                    <p><span className="font-medium">Address:</span> {selectedRegistration.address}</p>
+                    <p><span className="font-medium">City:</span> {selectedRegistration.city}</p>
+                    <p><span className="font-medium">Village:</span> {selectedRegistration.village}</p>
+                    <p><span className="font-medium">Pin Code:</span> {selectedRegistration.pinCode}</p>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Additional Information</h3>
+                  <div className="space-y-2 mt-2">
+                    <p><span className="font-medium">Aadhar Number:</span> {selectedRegistration.aadharNumber}</p>
+                    <p><span className="font-medium">Previous Participation:</span> {selectedRegistration.hasParticipatedBefore ? 'Yes' : 'No'}</p>
+                    <p><span className="font-medium">Linked Form:</span> {selectedRegistration.linkedForm || 'N/A'}</p>
+                    <p><span className="font-medium">Existing Tapasya:</span> {selectedRegistration.existingTapasya || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold">Passport Photo</h3>
+                  <div className="mt-2 relative w-32 h-40 border rounded-lg overflow-hidden">
+                    <Image
+                      src={`/api/images/${selectedRegistration.photoKey}`}
+                      alt="Passport Photo"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Aadhar Card</h3>
+                  <div className="mt-2 relative w-32 h-40 border rounded-lg overflow-hidden">
+                    <Image
+                      src={`/api/images/${selectedRegistration.aadharKey}`}
+                      alt="Aadhar Card"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Registration</DialogTitle>
+          </DialogHeader>
+          {selectedRegistration && (
+            <div className="space-y-6">
+              {/* Add edit form fields here */}
+              <p className="text-center text-gray-500">Edit functionality will be implemented in the next phase.</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 } 

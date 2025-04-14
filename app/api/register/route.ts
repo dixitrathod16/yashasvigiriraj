@@ -92,7 +92,8 @@ export async function POST(request: Request) {
     const isDuplicate = await checkForDuplicate(data.aadharNumber, data.formType);
     if (isDuplicate) {
       return NextResponse.json(
-        { error: "A registration with this aadharNumber and category already exists" },
+        { 
+          error: "A registration with this Aadhar Number already exists. Please check your details and try again." },
         { status: 409 }
       );
     }
@@ -110,6 +111,8 @@ export async function POST(request: Request) {
           id: registrationId.toString(), // Store as string for consistency
           status: 'PENDING',
           createdAt: new Date().toISOString(),
+          photoKey: data.photoKey,
+          aadharKey: data.aadharKey,
         },
         ConditionExpression: "attribute_not_exists(id)",
       })

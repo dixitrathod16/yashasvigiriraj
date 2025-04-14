@@ -13,29 +13,40 @@ const s3Client = new S3Client({
 
 export async function POST(request: Request) {
   try {
-    const { fileType } = await request.json();
+    const { files } = await request.json();
     
-    if (!fileType.startsWith('image/')) {
-      return NextResponse.json(
-        { error: 'Only image files are allowed' },
-        { status: 400 }
-      );
+    // Validate all files are images
+    for (const file of files) {
+      if (!file.fileType.startsWith('image/')) {
+        return NextResponse.json(
+          { error: 'Only image files are allowed' },
+          { status: 400 }
+        );
+      }
     }
 
-    const key = `photos/${uuidv4()}.${fileType.split('/')[1]}`;
-    const command = new PutObjectCommand({
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: key,
-      ContentType: fileType,
-    });
+    // Generate pre-signed URLs for all files in parallel
+    const uploadUrls = await Promise.all(
+      files.map(async (file: { fileType: string; uploadType: string }) => {
+        const prefix = file.uploadType === 'aadhar' ? 'aadhar/' : 'photos/';
+        const key = `${prefix}${uuidv4()}.${file.fileType.split('/')[1]}`;
+        
+        const command = new PutObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: key,
+          ContentType: file.fileType,
+        });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        return { url, key, uploadType: file.uploadType };
+      })
+    );
 
-    return NextResponse.json({ url, key });
+    return NextResponse.json({ uploadUrls });
   } catch (error) {
-    console.error('Error generating upload URL:', error);
+    console.error('Error generating upload URLs:', error);
     return NextResponse.json(
-      { error: 'Failed to generate upload URL' },
+      { error: 'Failed to generate upload URLs' },
       { status: 500 }
     );
   }
