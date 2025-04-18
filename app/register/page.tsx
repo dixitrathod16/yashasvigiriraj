@@ -1225,7 +1225,7 @@ export default function RegisterPage() {
                   <Input
                     id="linkedForm"
                     name="linkedForm"
-                    placeholder={`Form Registration No. e.g. ${formType}1234`}
+                    placeholder={`Registration ID E.g. ${formType}1234`}
                     onChange={handleInputChange}
                     value={formData.linkedForm || ''}
                   />
