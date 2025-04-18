@@ -125,6 +125,12 @@ export default function RegisterPage() {
     setStep('form');
     setPreviousYatraMessage(categories.find(c => c.id === categoryId)?.previousYatraMessage || null);
     setBottomText(categories.find(c => c.id === categoryId)?.bottomText || null);
+
+    // Scroll to top of the page
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   // Handler for form input changes
@@ -1208,12 +1214,12 @@ export default function RegisterPage() {
 
                 <div className="space-y-1">
                   <Label htmlFor="linkedForm" className="text-base font-medium">
-                    आपके परिवार से या किसी मित्र, संबधि ने फार्म भरा हो तो उनका Form No. व नाम / If any
+                    आपके परिवार से या किसी मित्र, संबधि ने फार्म भरा हो तो उनका Form Registration No./ If any
                   </Label>
                   <Input
                     id="linkedForm"
                     name="linkedForm"
-                    placeholder="Form No. व नाम"
+                    placeholder={`Form Registration No. e.g. ${formType}1234`}
                     onChange={handleInputChange}
                     value={formData.linkedForm || ''}
                   />
@@ -1347,17 +1353,19 @@ export default function RegisterPage() {
                   </p>
                 </div>
 
-                <div className="flex justify-between gap-4">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setStep('categories')}
+                    className="w-[200px]"
                   >
                     वापस / Back
                   </Button>
                   <Button
                     type="submit"
                     disabled={loading}
+                    className="w-[200px]"
                   >
                     {loading ? 'प्रस्तुत कर रहा है... / Submitting...' : 'प्रस्तुत करें / Submit'}
                   </Button>
