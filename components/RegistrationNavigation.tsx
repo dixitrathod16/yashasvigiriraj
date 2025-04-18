@@ -36,7 +36,7 @@ export function RegistrationNavigation() {
                 style={{ objectFit: 'contain' }}
               />
             </div>
-            <span className="text-xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+            <span className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
               यशस्वी गिरिराज
             </span>
           </Link>

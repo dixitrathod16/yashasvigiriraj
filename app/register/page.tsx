@@ -634,6 +634,12 @@ export default function RegisterPage() {
     setFormType(null);
     setPreviousYatraMessage(null);
     setBottomText(null);
+
+    // Scroll to top of the page
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   // Function to generate and download PDF
@@ -863,7 +869,7 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <RegistrationNavigation />
-      <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-24">
+      <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-20">
         <div className="container mx-auto px-4 md:px-10 py-8 md:py-12 space-y-8">
           {step === 'categories' && (
             <motion.section
@@ -872,7 +878,7 @@ export default function RegisterPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <h1 className="text-3xl md:text-4xl font-bold text-center mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary leading-relaxed py-2">
+              <h1 className="text-3xl font-bold text-center mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary leading-relaxed py-2">
                 पंजीकरण / Registration
               </h1>
               <p className="text-lg text-gray-700 text-center mb-10">
@@ -890,8 +896,8 @@ export default function RegisterPage() {
                     <Card className="h-full hover:shadow-lg transition-shadow">
                       <CardHeader>
                         <CardTitle className="text-center">
-                          <span className="block text-xl font-bold text-primary">{category.titleHindi}</span>
-                          <span className="block text-lg">{category.titleEnglish}</span>
+                          <span className="block text-3xl font-bold text-primary mb-2">{category.titleHindi}</span>
+                          <span className="block text-base">{category.titleEnglish}</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -1357,7 +1363,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setStep('categories')}
+                    onClick={handleNewRegistration}
                     className="w-[200px]"
                   >
                     वापस / Back
