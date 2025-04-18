@@ -30,7 +30,7 @@ export function JeevithMahotsav() {
                     <div className="mb-4">
                         <p className="text-lg text-primary mb-1">दिनांक</p>
                         <p className="text-xl font-bold text-primary">
-                            25 - 26 नवंबर, 2025
+                            24 - 25 नवंबर, 2025
                         </p>
                     </div>
                     <div>

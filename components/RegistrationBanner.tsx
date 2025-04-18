@@ -89,7 +89,7 @@ export function RegistrationBanner() {
           पंजीकरण
         </h2>
         <p className="text-center text-lg mb-6">
-          Registrations Opening Soon for this Divine Journey
+          Online Registrations Starts From 30th April 2025
         </p>
         <AnimatePresence mode="wait">
           {!showForm ? (
@@ -148,7 +148,7 @@ export function RegistrationBanner() {
                   htmlFor="consent"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  Yes, I want to receive important updates through WhatsApp and SMS
+                  Yes, I want to receive important updates through WhatsApp/SMS
                 </label>
               </div>
               <Button
