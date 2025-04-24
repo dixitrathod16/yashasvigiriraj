@@ -14,9 +14,17 @@ export function HeroSection() {
       <div className="container mx-auto px-3 pt-12 flex flex-col items-center">
         <motion.div 
           className="relative w-[300px] h-[230px] md:w-[560px] md:h-[430px] mb-4 md:mb-12"
-          initial={{ scale: 0.3 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          initial={{ scale: 0.3, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ 
+            duration: 1.2,
+            delay: 0.2,
+            ease: [0.34, 1.56, 0.64, 1],
+            rotate: {
+              duration: 1.5,
+              ease: [0.34, 1.56, 0.64, 1]
+            }
+          }}
         >
           <Image
             src="/YASHVI LOGO 1 TIFF.webp"
