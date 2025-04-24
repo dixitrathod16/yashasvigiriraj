@@ -17,11 +17,11 @@ export function HeroSection() {
           initial={{ scale: 0.3, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ 
-            duration: 1.2,
-            delay: 0.2,
+            duration: 2,
+            delay: 0.3,
             ease: [0.34, 1.56, 0.64, 1],
             rotate: {
-              duration: 1.5,
+              duration: 2.5,
               ease: [0.34, 1.56, 0.64, 1]
             }
           }}
