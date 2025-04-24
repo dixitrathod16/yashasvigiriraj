@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CountdownTimer } from '@/components/CountdownTimer';
 
 // Categories data
 const categories = [
@@ -49,6 +50,9 @@ interface UploadUrlResponse {
   key: string;
   uploadType: 'photo' | 'aadhar';
 }
+
+// Get registration start date from environment variable
+const registrationStartDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_START_DATE || '2025-04-30T00:00:00');
 
 export default function RegisterPage() {
   // States for the form
@@ -104,6 +108,11 @@ export default function RegisterPage() {
   }>({});
   const [photoInputKey, setPhotoInputKey] = useState(0);
   const [aadharInputKey, setAadharInputKey] = useState(0);
+  const [hasRegistrationStarted, setHasRegistrationStarted] = useState(new Date() >= registrationStartDate);
+
+  const handleCountdownComplete = () => {
+    setHasRegistrationStarted(true);
+  };
 
   // Handler for category selection
   const handleCategorySelect = (categoryId: 'SAN' | 'CHA' | 'NAV') => {
@@ -927,787 +936,796 @@ export default function RegisterPage() {
       <RegistrationNavigation />
       <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-20">
         <div className="container mx-auto px-4 md:px-10 py-8 md:py-12 space-y-8">
-          {step === 'categories' && (
-            <motion.section
-              className="flex flex-col items-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h1 className="text-3xl font-bold text-center mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary leading-relaxed py-2">
-                पंजीकरण / Registration
-              </h1>
-              <p className="text-lg text-gray-700 text-center mb-10">
-                कृपया अपना पंजीकरण श्रेणी चुनें / Please select your registration category
-              </p>
+          {!hasRegistrationStarted ? (
+            <CountdownTimer 
+              targetDate={registrationStartDate} 
+              onCountdownComplete={handleCountdownComplete}
+            />
+          ) : (
+            <>
+              {step === 'categories' && (
+                <motion.section
+                  className="flex flex-col items-center"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <h1 className="text-3xl font-bold text-center mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary leading-relaxed py-2">
+                    पंजीकरण / Registration
+                  </h1>
+                  <p className="text-lg text-gray-700 text-center mb-10">
+                    कृपया अपना पंजीकरण श्रेणी चुनें / Please select your registration category
+                  </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
-                {categories.map((category) => (
-                  <motion.div
-                    key={category.id}
-                    whileHover={{ scale: 1.03 }}
-                    className="cursor-pointer"
-                    onClick={() => handleCategorySelect(category.id as 'SAN' | 'CHA' | 'NAV')}
-                  >
-                    <Card className="h-full hover:shadow-lg transition-shadow">
-                      <CardHeader>
-                        <CardTitle className="text-center">
-                          <span className="block text-3xl font-bold text-primary mb-2">{category.titleHindi}</span>
-                          <span className="block text-base">{category.titleEnglish}</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription className="text-center text-base">
-                          <span className="block font-medium text-gray-800">{category.description}</span>
-                          <span className="block mt-2 text-gray-600">{category.date}</span>
-                        </CardDescription>
-                      </CardContent>
-                      <CardFooter className="flex justify-center">
-                        <Button>चुनें / Select</Button>
-                      </CardFooter>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
-          )}
-
-          {step === 'form' && formType && (
-            <motion.section
-              className="flex flex-col items-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <form onSubmit={handleSubmit} className="w-full max-w-5xl space-y-8 bg-white/90 p-8 rounded-lg shadow-lg">
-                <div className="w-full max-w-6xl mb-4 flex justify-start">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleNewRegistration}
-                    className="flex items-center gap-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
-                      <path d="m12 19-7-7 7-7" />
-                      <path d="M19 12H5" />
-                    </svg>
-                    वापस / Back
-                  </Button>
-                </div>
-                <div className="w-full mb-8">
-                  <Image
-                    src={`/${formType === 'SAN' ? 'Full Sangh' : formType === 'CHA' ? 'Charipalith Sangh' : 'Navanu'} Header.jpg`}
-                    alt={`${categories.find(c => c.id === formType)?.titleHindi} Header`}
-                    width={800}
-                    height={200}
-                    className="w-full rounded-lg object-contain"
-                    priority
-                  />
-                </div>
-
-                {error && (
-                  <Alert variant="destructive" className="mb-6 max-w-3xl w-full">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-base font-medium">
-                      आराधक का पूरा नाम / Full Name
-                    </Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      placeholder="पूरा नाम / Full Name"
-                      required
-                      onChange={handleInputChange}
-                      onKeyDown={handleNameInput}
-                      onPaste={handleNamePaste}
-                      className={formErrors.fullName ? "border-red-500" : ""}
-                      value={formData.fullName || ''}
-                    />
-                    {formErrors.fullName && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.fullName}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-base font-medium">
-                      उम्र / Age
-                    </Label>
-                    <div className="flex items-center gap-4">
-                      <Input
-                        id="age"
-                        name="age"
-                        type="number"
-                        placeholder="Age"
-                        required
-                        min="1"
-                        max="120"
-                        onChange={handleInputChange}
-                        className={formErrors.age ? "border-red-500" : ""}
-                        value={formData.age?.toString() || ''}
-                      />
-                      <RadioGroup
-                        value={formData.gender}
-                        className="flex space-x-4"
-                        onValueChange={(value: 'M' | 'F') => {
-                          setFormData({ ...formData, gender: value });
-                        }}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+                    {categories.map((category) => (
+                      <motion.div
+                        key={category.id}
+                        whileHover={{ scale: 1.03 }}
+                        className="cursor-pointer"
+                        onClick={() => handleCategorySelect(category.id as 'SAN' | 'CHA' | 'NAV')}
                       >
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="M" id="male" />
-                          <Label htmlFor="male">M/पु</Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="F" id="female" />
-                          <Label htmlFor="female">F/स्त्री</Label>
-                        </div>
-                      </RadioGroup>
+                        <Card className="h-full hover:shadow-lg transition-shadow">
+                          <CardHeader>
+                            <CardTitle className="text-center">
+                              <span className="block text-3xl font-bold text-primary mb-2">{category.titleHindi}</span>
+                              <span className="block text-base">{category.titleEnglish}</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <CardDescription className="text-center text-base">
+                              <span className="block font-medium text-gray-800">{category.description}</span>
+                              <span className="block mt-2 text-gray-600">{category.date}</span>
+                            </CardDescription>
+                          </CardContent>
+                          <CardFooter className="flex justify-center">
+                            <Button>चुनें / Select</Button>
+                          </CardFooter>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.section>
+              )}
+
+              {step === 'form' && formType && (
+                <motion.section
+                  className="flex flex-col items-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <form onSubmit={handleSubmit} className="w-full max-w-5xl space-y-8 bg-white/90 p-8 rounded-lg shadow-lg">
+                    <div className="w-full max-w-6xl mb-4 flex justify-start">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleNewRegistration}
+                        className="flex items-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
+                          <path d="m12 19-7-7 7-7" />
+                          <path d="M19 12H5" />
+                        </svg>
+                        वापस / Back
+                      </Button>
                     </div>
-                    {formErrors.age && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.age}</p>
+                    <div className="w-full mb-8">
+                      <Image
+                        src={`/${formType === 'SAN' ? 'Full Sangh' : formType === 'CHA' ? 'Charipalith Sangh' : 'Navanu'} Header.jpg`}
+                        alt={`${categories.find(c => c.id === formType)?.titleHindi} Header`}
+                        width={800}
+                        height={200}
+                        className="w-full rounded-lg object-contain"
+                        priority
+                      />
+                    </div>
+
+                    {error && (
+                      <Alert variant="destructive" className="mb-6 max-w-3xl w-full">
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
                     )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="guardianName" className="text-base font-medium">
-                    पिता या पति का नाम / Father&apos;s or Husband&apos;s Name
-                  </Label>
-                  <Input
-                    id="guardianName"
-                    name="guardianName"
-                    placeholder="पिता/पति का नाम"
-                    required
-                    onChange={handleInputChange}
-                    onKeyDown={handleNameInput}
-                    onPaste={handleNamePaste}
-                    className={formErrors.guardianName ? "border-red-500" : ""}
-                    value={formData.guardianName || ''}
-                  />
-                  {formErrors.guardianName && (
-                    <p className="text-red-500 text-sm mt-1">{formErrors.guardianName}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address" className="text-base font-medium">
-                    पता / Address
-                  </Label>
-                  <Textarea
-                    id="address"
-                    name="address"
-                    placeholder="पूरा पता / Full Address"
-                    required
-                    onChange={handleInputChange}
-                    className={formErrors.address ? "border-red-500" : ""}
-                    value={formData.address || ''}
-                  />
-                  {formErrors.address && (
-                    <p className="text-red-500 text-sm mt-1">{formErrors.address}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="city" className="text-base font-medium">
-                      शहर / City
-                    </Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      placeholder="शहर / City"
-                      required
-                      onChange={handleInputChange}
-                      className={formErrors.city ? "border-red-500" : ""}
-                      value={formData.city || ''}
-                    />
-                    {formErrors.city && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.city}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pinCode" className="text-base font-medium">
-                      पिन कोड / Pin Code
-                    </Label>
-                    <Input
-                      id="pinCode"
-                      name="pinCode"
-                      maxLength={6}
-                      onKeyDown={handleNumericInput}
-                      placeholder="Pin Code"
-                      required
-                      onChange={handleInputChange}
-                      className={formErrors.pinCode ? "border-red-500" : ""}
-                      value={formData.pinCode?.toString() || ''}
-                    />
-                    {formErrors.pinCode && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.pinCode}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="village" className="text-base font-medium">
-                      गाँव / Village
-                    </Label>
-                    <Input
-                      id="village"
-                      name="village"
-                      placeholder="गाँव / Village"
-                      required
-                      onChange={handleInputChange}
-                      className={formErrors.village ? "border-red-500" : ""}
-                      value={formData.village || ''}
-                    />
-                    {formErrors.village && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.village}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="aadharNumber" className="text-base font-medium">
-                      आधार नंबर / Aadhar Number
-                    </Label>
-                    <Input
-                      id="aadharNumber"
-                      name="aadharNumber"
-                      type="tel"
-                      placeholder="आधार नंबर / Aadhar Number"
-                      required
-                      maxLength={12}
-                      onChange={handleInputChange}
-                      onKeyDown={handleNumericInput}
-                      onPaste={handlePaste}
-                      className={formErrors.aadharNumber ? "border-red-500" : ""}
-                      value={formData.aadharNumber?.toString() || ''}
-                    />
-                    {formErrors.aadharNumber && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.aadharNumber}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber" className="text-base font-medium">
-                      संपर्क: मो. / Mobile No.
-                    </Label>
-                    <Input
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      type="tel"
-                      placeholder="मोबाइल नंबर / Mobile Number"
-                      required
-                      maxLength={10}
-                      onChange={handleInputChange}
-                      onKeyDown={handleNumericInput}
-                      onPaste={handlePaste}
-                      className={formErrors.phoneNumber ? "border-red-500" : ""}
-                      value={formData.phoneNumber?.toString() || ''}
-                    />
-                    {formErrors.phoneNumber && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.phoneNumber}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="whatsappNumber" className="text-base font-medium">
-                      व्हाट्सऐप नंबर / Whatsapp No.
-                    </Label>
-                    <Input
-                      id="whatsappNumber"
-                      name="whatsappNumber"
-                      type="tel"
-                      placeholder="व्हाट्सऐप नंबर / Whatsapp Number"
-                      required
-                      maxLength={10}
-                      onChange={handleInputChange}
-                      onKeyDown={handleNumericInput}
-                      onPaste={handlePaste}
-                      className={formErrors.whatsappNumber ? "border-red-500" : ""}
-                      value={formData.whatsappNumber?.toString() || ''}
-                    />
-                    {formErrors.whatsappNumber && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.whatsappNumber}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="emergencyContact" className="text-base font-medium">
-                      आपातकालीन नंबर / Emergency No.
-                    </Label>
-                    <Input
-                      id="emergencyContact"
-                      name="emergencyContact"
-                      type="tel"
-                      placeholder="आपातकालीन नंबर / Emergency Number"
-                      required
-                      maxLength={10}
-                      onChange={handleInputChange}
-                      onKeyDown={handleNumericInput}
-                      onPaste={handlePaste}
-                      className={formErrors.emergencyContact ? "border-red-500" : ""}
-                      value={formData.emergencyContact?.toString() || ''}
-                    />
-                    {formErrors.emergencyContact && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.emergencyContact}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-base font-medium">
-                    वर्तमान में चल रही विशिष्ट तपस्या का विवरण / Details of the special tapasya being carried out at present
-                  </Label>
-                  <Textarea
-                    id="existingTapasya"
-                    name="existingTapasya"
-                    placeholder="यदि कोई है / If any"
-                    onChange={handleInputChange}
-                    value={formData.existingTapasya || ''}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    <Label className="text-base font-medium whitespace-nowrap">
-                      {previousYatraMessage}
-                    </Label>
-                    <RadioGroup
-                      value={formData.hasParticipatedBefore ? 'yes' : 'no'}
-                      className="flex space-x-4"
-                      onValueChange={(value: 'yes' | 'no') => {
-                        setFormData({ ...formData, hasParticipatedBefore: value === 'yes' });
-                      }}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="yes" id="yes" />
-                        <Label htmlFor="yes">हाँ / Yes</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName" className="text-base font-medium">
+                          आराधक का पूरा नाम / Full Name
+                        </Label>
+                        <Input
+                          id="fullName"
+                          name="fullName"
+                          placeholder="पूरा नाम / Full Name"
+                          required
+                          onChange={handleInputChange}
+                          onKeyDown={handleNameInput}
+                          onPaste={handleNamePaste}
+                          className={formErrors.fullName ? "border-red-500" : ""}
+                          value={formData.fullName || ''}
+                        />
+                        {formErrors.fullName && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.fullName}</p>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="no" id="no" />
-                        <Label htmlFor="no">नहीं / No</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="linkedForm" className="text-base font-medium">
-                    आपके परिवार से या किसी मित्र, संबधि ने फार्म भरा हो तो उनका Form Registration No./ If any
-                  </Label>
-                  <Input
-                    id="linkedForm"
-                    name="linkedForm"
-                    placeholder={`Registration ID E.g. ${formType}1234`}
-                    onChange={handleInputChange}
-                    value={formData.linkedForm || ''}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <Label className="text-base font-medium">
-                      पासपोर्ट साइज़ फोटो / Passport Size Photo
-                    </Label>
-                    <div className="flex flex-col gap-4 items-start">
-                      <div className="relative">
-                        <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${
-                          formErrors.photo ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
-                        }`}>
-                          {photoPreview ? (
-                            <div className="relative w-full h-full">
-                              <Image
-                                src={photoPreview}
-                                alt="Passport size photo preview"
-                                fill
-                                style={{ objectFit: 'cover' }}
-                                className="rounded-lg"
-                              />
-                              <button
-                                onClick={handleClearPhoto}
-                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          ) : (
-                            <label htmlFor="photo" className="cursor-pointer text-center p-4">
-                              <div className="flex flex-col items-center">
-                                <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <span className="text-xs text-gray-500">Click to upload</span>
-                                <span className="text-[10px] text-gray-400">JPG, PNG (max. 4MB)</span>
-                              </div>
-                            </label>
-                          )}
+                      <div className="space-y-2">
+                        <Label className="text-base font-medium">
+                          उम्र / Age
+                        </Label>
+                        <div className="flex items-center gap-4">
                           <Input
-                            id="photo"
-                            name="photo"
-                            type="file"
-                            accept="image/jpeg,image/png,image/jpg"
-                            onChange={handlePhotoChange}
-                            className="hidden"
-                            key={`photo-${photoInputKey}`}
+                            id="age"
+                            name="age"
+                            type="number"
+                            placeholder="Age"
+                            required
+                            min="1"
+                            max="120"
+                            onChange={handleInputChange}
+                            className={formErrors.age ? "border-red-500" : ""}
+                            value={formData.age?.toString() || ''}
                           />
+                          <RadioGroup
+                            value={formData.gender}
+                            className="flex space-x-4"
+                            onValueChange={(value: 'M' | 'F') => {
+                              setFormData({ ...formData, gender: value });
+                            }}
+                          >
+                            <div className="flex items-center space-x-1">
+                              <RadioGroupItem value="M" id="male" />
+                              <Label htmlFor="male">M/पु</Label>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <RadioGroupItem value="F" id="female" />
+                              <Label htmlFor="female">F/स्त्री</Label>
+                            </div>
+                          </RadioGroup>
                         </div>
+                        {formErrors.age && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.age}</p>
+                        )}
                       </div>
-                      {formErrors.photo && (
-                        <div className="flex items-center gap-2 text-red-500 text-sm">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <p>{formErrors.photo}</p>
-                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="guardianName" className="text-base font-medium">
+                        पिता या पति का नाम / Father&apos;s or Husband&apos;s Name
+                      </Label>
+                      <Input
+                        id="guardianName"
+                        name="guardianName"
+                        placeholder="पिता/पति का नाम"
+                        required
+                        onChange={handleInputChange}
+                        onKeyDown={handleNameInput}
+                        onPaste={handleNamePaste}
+                        className={formErrors.guardianName ? "border-red-500" : ""}
+                        value={formData.guardianName || ''}
+                      />
+                      {formErrors.guardianName && (
+                        <p className="text-red-500 text-sm mt-1">{formErrors.guardianName}</p>
                       )}
                     </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <Label className="text-base font-medium">
-                      आधार कार्ड / Aadhar Card
-                    </Label>
-                    <div className="flex flex-col gap-4 items-start">
-                      <div className="relative">
-                        <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${
-                          formErrors.aadharCard ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
-                        }`}>
-                          {aadharPreview ? (
-                            <div className="relative w-full h-full">
-                              <Image
-                                src={aadharPreview}
-                                alt="Aadhar card preview"
-                                fill
-                                style={{ objectFit: 'cover' }}
-                                className="rounded-lg"
-                              />
-                              <button
-                                onClick={handleClearAadhar}
-                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          ) : (
-                            <label htmlFor="aadharCard" className="cursor-pointer text-center p-4">
-                              <div className="flex flex-col items-center">
-                                <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <span className="text-xs text-gray-500">Click to upload</span>
-                                <span className="text-[10px] text-gray-400">JPG, PNG (max. 4MB)</span>
-                              </div>
-                            </label>
-                          )}
-                          <Input
-                            id="aadharCard"
-                            name="aadharCard"
-                            type="file"
-                            accept="image/jpeg,image/png,image/jpg"
-                            onChange={handleAadharChange}
-                            className="hidden"
-                            key={`aadhar-${aadharInputKey}`}
-                          />
-                        </div>
-                      </div>
-                      {formErrors.aadharCard && (
-                        <div className="flex items-center gap-2 text-red-500 text-sm">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <p>{formErrors.aadharCard}</p>
-                        </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address" className="text-base font-medium">
+                        पता / Address
+                      </Label>
+                      <Textarea
+                        id="address"
+                        name="address"
+                        placeholder="पूरा पता / Full Address"
+                        required
+                        onChange={handleInputChange}
+                        className={formErrors.address ? "border-red-500" : ""}
+                        value={formData.address || ''}
+                      />
+                      {formErrors.address && (
+                        <p className="text-red-500 text-sm mt-1">{formErrors.address}</p>
                       )}
                     </div>
-                  </div>
-                </div>
 
-                <div className="border-t pt-6">
-                  <p className="text-base font-medium text-gray-800 text-center">
-                    {bottomText}
-                  </p>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="city" className="text-base font-medium">
+                          शहर / City
+                        </Label>
+                        <Input
+                          id="city"
+                          name="city"
+                          placeholder="शहर / City"
+                          required
+                          onChange={handleInputChange}
+                          className={formErrors.city ? "border-red-500" : ""}
+                          value={formData.city || ''}
+                        />
+                        {formErrors.city && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.city}</p>
+                        )}
+                      </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleNewRegistration}
-                    className="w-[200px]"
-                  >
-                    वापस / Back
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleReview}
-                    className="w-[200px]"
-                  >
-                    समीक्षा करें / Review
-                  </Button>
-                </div>
-              </form>
-            </motion.section>
-          )}
+                      <div className="space-y-2">
+                        <Label htmlFor="pinCode" className="text-base font-medium">
+                          पिन कोड / Pin Code
+                        </Label>
+                        <Input
+                          id="pinCode"
+                          name="pinCode"
+                          maxLength={6}
+                          onKeyDown={handleNumericInput}
+                          placeholder="Pin Code"
+                          required
+                          onChange={handleInputChange}
+                          className={formErrors.pinCode ? "border-red-500" : ""}
+                          value={formData.pinCode?.toString() || ''}
+                        />
+                        {formErrors.pinCode && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.pinCode}</p>
+                        )}
+                      </div>
 
-          {step === 'review' && (
-            <motion.section
-              className="flex flex-col items-center"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <form className="w-full max-w-5xl space-y-8 bg-white/90 p-8 rounded-lg shadow-lg">
-                <div className="w-full max-w-6xl mb-4 flex justify-start">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleEdit}
-                    className="flex items-center gap-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
-                      <path d="m12 19-7-7 7-7" />
-                      <path d="M19 12H5" />
-                    </svg>
-                    वापस / Back
-                  </Button>
-                </div>
-                <div className="w-full mb-8">
-                  <Image
-                    src={`/${formType === 'SAN' ? 'Full Sangh' : formType === 'CHA' ? 'Charipalith Sangh' : 'Navanu'} Header.jpg`}
-                    alt={`${categories.find(c => c.id === formType)?.titleHindi} Header`}
-                    width={800}
-                    height={200}
-                    className="w-full rounded-lg object-contain"
-                    priority
-                  />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="village" className="text-base font-medium">
+                          गाँव / Village
+                        </Label>
+                        <Input
+                          id="village"
+                          name="village"
+                          placeholder="गाँव / Village"
+                          required
+                          onChange={handleInputChange}
+                          className={formErrors.village ? "border-red-500" : ""}
+                          value={formData.village || ''}
+                        />
+                        {formErrors.village && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.village}</p>
+                        )}
+                      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-base font-medium">
-                      आराधक का पूरा नाम / Full Name
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.fullName}</div>
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="aadharNumber" className="text-base font-medium">
+                          आधार नंबर / Aadhar Number
+                        </Label>
+                        <Input
+                          id="aadharNumber"
+                          name="aadharNumber"
+                          type="tel"
+                          placeholder="आधार नंबर / Aadhar Number"
+                          required
+                          maxLength={12}
+                          onChange={handleInputChange}
+                          onKeyDown={handleNumericInput}
+                          onPaste={handlePaste}
+                          className={formErrors.aadharNumber ? "border-red-500" : ""}
+                          value={formData.aadharNumber?.toString() || ''}
+                        />
+                        {formErrors.aadharNumber && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.aadharNumber}</p>
+                        )}
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-base font-medium">
-                      उम्र / Age
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.age} - {formData.gender === 'M' ? 'पुरुष' : 'स्त्री'}</div>
-                  </div>
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber" className="text-base font-medium">
+                          संपर्क: मो. / Mobile No.
+                        </Label>
+                        <Input
+                          id="phoneNumber"
+                          name="phoneNumber"
+                          type="tel"
+                          placeholder="मोबाइल नंबर / Mobile Number"
+                          required
+                          maxLength={10}
+                          onChange={handleInputChange}
+                          onKeyDown={handleNumericInput}
+                          onPaste={handlePaste}
+                          className={formErrors.phoneNumber ? "border-red-500" : ""}
+                          value={formData.phoneNumber?.toString() || ''}
+                        />
+                        {formErrors.phoneNumber && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.phoneNumber}</p>
+                        )}
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="guardianName" className="text-base font-medium">
-                    पिता या पति का नाम / Father&apos;s or Husband&apos;s Name
-                  </Label>
-                  <div className="p-3 border rounded-md bg-gray-50">{formData.guardianName}</div>
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="whatsappNumber" className="text-base font-medium">
+                          व्हाट्सऐप नंबर / Whatsapp No.
+                        </Label>
+                        <Input
+                          id="whatsappNumber"
+                          name="whatsappNumber"
+                          type="tel"
+                          placeholder="व्हाट्सऐप नंबर / Whatsapp Number"
+                          required
+                          maxLength={10}
+                          onChange={handleInputChange}
+                          onKeyDown={handleNumericInput}
+                          onPaste={handlePaste}
+                          className={formErrors.whatsappNumber ? "border-red-500" : ""}
+                          value={formData.whatsappNumber?.toString() || ''}
+                        />
+                        {formErrors.whatsappNumber && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.whatsappNumber}</p>
+                        )}
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="address" className="text-base font-medium">
-                    पता / Address
-                  </Label>
-                  <div className="p-3 border rounded-md bg-gray-50">{formData.address}</div>
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="emergencyContact" className="text-base font-medium">
+                          आपातकालीन नंबर / Emergency No.
+                        </Label>
+                        <Input
+                          id="emergencyContact"
+                          name="emergencyContact"
+                          type="tel"
+                          placeholder="आपातकालीन नंबर / Emergency Number"
+                          required
+                          maxLength={10}
+                          onChange={handleInputChange}
+                          onKeyDown={handleNumericInput}
+                          onPaste={handlePaste}
+                          className={formErrors.emergencyContact ? "border-red-500" : ""}
+                          value={formData.emergencyContact?.toString() || ''}
+                        />
+                        {formErrors.emergencyContact && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.emergencyContact}</p>
+                        )}
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="city" className="text-base font-medium">
-                      शहर / City
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.city}</div>
-                  </div>
+                    <div className="space-y-2">
+                      <Label className="text-base font-medium">
+                        वर्तमान में चल रही विशिष्ट तपस्या का विवरण / Details of the special tapasya being carried out at present
+                      </Label>
+                      <Textarea
+                        id="existingTapasya"
+                        name="existingTapasya"
+                        placeholder="यदि कोई है / If any"
+                        onChange={handleInputChange}
+                        value={formData.existingTapasya || ''}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="pinCode" className="text-base font-medium">
-                      पिन कोड / Pin Code
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.pinCode}</div>
-                  </div>
+                    <div className="space-y-2">
+                      <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <Label className="text-base font-medium whitespace-nowrap">
+                          {previousYatraMessage}
+                        </Label>
+                        <RadioGroup
+                          value={formData.hasParticipatedBefore ? 'yes' : 'no'}
+                          className="flex space-x-4"
+                          onValueChange={(value: 'yes' | 'no') => {
+                            setFormData({ ...formData, hasParticipatedBefore: value === 'yes' });
+                          }}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="yes" id="yes" />
+                            <Label htmlFor="yes">हाँ / Yes</Label>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="no" id="no" />
+                            <Label htmlFor="no">नहीं / No</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="village" className="text-base font-medium">
-                      गाँव / Village
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.village}</div>
-                  </div>
-                </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="linkedForm" className="text-base font-medium">
+                        आपके परिवार से या किसी मित्र, संबधि ने फार्म भरा हो तो उनका Form Registration No./ If any
+                      </Label>
+                      <Input
+                        id="linkedForm"
+                        name="linkedForm"
+                        placeholder={`Registration ID E.g. ${formType}1234`}
+                        onChange={handleInputChange}
+                        value={formData.linkedForm || ''}
+                      />
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="aadharNumber" className="text-base font-medium">
-                      आधार नंबर / Aadhar Number
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.aadharNumber}</div>
-                  </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <Label className="text-base font-medium">
+                          पासपोर्ट साइज़ फोटो / Passport Size Photo
+                        </Label>
+                        <div className="flex flex-col gap-4 items-start">
+                          <div className="relative">
+                            <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${
+                              formErrors.photo ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
+                            }`}>
+                              {photoPreview ? (
+                                <div className="relative w-full h-full">
+                                  <Image
+                                    src={photoPreview}
+                                    alt="Passport size photo preview"
+                                    fill
+                                    style={{ objectFit: 'cover' }}
+                                    className="rounded-lg"
+                                  />
+                                  <button
+                                    onClick={handleClearPhoto}
+                                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <label htmlFor="photo" className="cursor-pointer text-center p-4">
+                                  <div className="flex flex-col items-center">
+                                    <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="text-xs text-gray-500">Click to upload</span>
+                                    <span className="text-[10px] text-gray-400">JPG, PNG (max. 4MB)</span>
+                                  </div>
+                                </label>
+                              )}
+                              <Input
+                                id="photo"
+                                name="photo"
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                onChange={handlePhotoChange}
+                                className="hidden"
+                                key={`photo-${photoInputKey}`}
+                              />
+                            </div>
+                          </div>
+                          {formErrors.photo && (
+                            <div className="flex items-center gap-2 text-red-500 text-sm">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <p>{formErrors.photo}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber" className="text-base font-medium">
-                      संपर्क: मो. / Mobile No.
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.phoneNumber}</div>
-                  </div>
+                      <div className="space-y-4">
+                        <Label className="text-base font-medium">
+                          आधार कार्ड / Aadhar Card
+                        </Label>
+                        <div className="flex flex-col gap-4 items-start">
+                          <div className="relative">
+                            <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${
+                              formErrors.aadharCard ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
+                            }`}>
+                              {aadharPreview ? (
+                                <div className="relative w-full h-full">
+                                  <Image
+                                    src={aadharPreview}
+                                    alt="Aadhar card preview"
+                                    fill
+                                    style={{ objectFit: 'cover' }}
+                                    className="rounded-lg"
+                                  />
+                                  <button
+                                    onClick={handleClearAadhar}
+                                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <label htmlFor="aadharCard" className="cursor-pointer text-center p-4">
+                                  <div className="flex flex-col items-center">
+                                    <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="text-xs text-gray-500">Click to upload</span>
+                                    <span className="text-[10px] text-gray-400">JPG, PNG (max. 4MB)</span>
+                                  </div>
+                                </label>
+                              )}
+                              <Input
+                                id="aadharCard"
+                                name="aadharCard"
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                onChange={handleAadharChange}
+                                className="hidden"
+                                key={`aadhar-${aadharInputKey}`}
+                              />
+                            </div>
+                          </div>
+                          {formErrors.aadharCard && (
+                            <div className="flex items-center gap-2 text-red-500 text-sm">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <p>{formErrors.aadharCard}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="whatsappNumber" className="text-base font-medium">
-                      व्हाट्सऐप नंबर / Whatsapp No.
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.whatsappNumber}</div>
-                  </div>
-                </div>
+                    <div className="border-t pt-6">
+                      <p className="text-base font-medium text-gray-800 text-center">
+                        {bottomText}
+                      </p>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="emergencyContact" className="text-base font-medium">
-                    आपातकालीन नंबर / Emergency No.
-                  </Label>
-                  <div className="p-3 border rounded-md bg-gray-50">{formData.emergencyContact}</div>
-                </div>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleNewRegistration}
+                        className="w-[200px]"
+                      >
+                        वापस / Back
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleReview}
+                        className="w-[200px]"
+                      >
+                        समीक्षा करें / Review
+                      </Button>
+                    </div>
+                  </form>
+                </motion.section>
+              )}
 
-                <div className="space-y-2">
-                  <Label className="text-base font-medium">
-                    वर्तमान में चल रही विशिष्ट तपस्या का विवरण / Details of the special tapasya being carried out at present
-                  </Label>
-                  <div className="p-3 border rounded-md bg-gray-50">{formData.existingTapasya || 'N/A'}</div>
-                </div>
+              {step === 'review' && (
+                <motion.section
+                  className="flex flex-col items-center"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <form className="w-full max-w-5xl space-y-8 bg-white/90 p-8 rounded-lg shadow-lg">
+                    <div className="w-full max-w-6xl mb-4 flex justify-start">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleEdit}
+                        className="flex items-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
+                          <path d="m12 19-7-7 7-7" />
+                          <path d="M19 12H5" />
+                        </svg>
+                        वापस / Back
+                      </Button>
+                    </div>
+                    <div className="w-full mb-8">
+                      <Image
+                        src={`/${formType === 'SAN' ? 'Full Sangh' : formType === 'CHA' ? 'Charipalith Sangh' : 'Navanu'} Header.jpg`}
+                        alt={`${categories.find(c => c.id === formType)?.titleHindi} Header`}
+                        width={800}
+                        height={200}
+                        className="w-full rounded-lg object-contain"
+                        priority
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    <Label className="text-base font-medium whitespace-nowrap">
-                      {previousYatraMessage}
-                    </Label>
-                    <div className="p-3 border rounded-md bg-gray-50">{formData.hasParticipatedBefore ? 'हाँ / Yes' : 'नहीं / No'}</div>
-                  </div>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName" className="text-base font-medium">
+                          आराधक का पूरा नाम / Full Name
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.fullName}</div>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="linkedForm" className="text-base font-medium">
-                    आपके परिवार से या किसी मित्र, संबधि ने फार्म भरा हो तो उनका Form Registration No./ If any
-                  </Label>
-                  <div className="p-3 border rounded-md bg-gray-50">{formData.linkedForm || 'N/A'}</div>
-                </div>
+                      <div className="space-y-2">
+                        <Label className="text-base font-medium">
+                          उम्र / Age
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.age} - {formData.gender === 'M' ? 'पुरुष' : 'स्त्री'}</div>
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <Label className="text-base font-medium">
-                      पासपोर्ट साइज़ फोटो / Passport Size Photo
-                    </Label>
-                    {photoPreview && (
-                      <div className="relative w-[140px] h-[180px] border rounded-lg overflow-hidden">
+                    <div className="space-y-2">
+                      <Label htmlFor="guardianName" className="text-base font-medium">
+                        पिता या पति का नाम / Father&apos;s or Husband&apos;s Name
+                      </Label>
+                      <div className="p-3 border rounded-md bg-gray-50">{formData.guardianName}</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="address" className="text-base font-medium">
+                        पता / Address
+                      </Label>
+                      <div className="p-3 border rounded-md bg-gray-50">{formData.address}</div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="city" className="text-base font-medium">
+                          शहर / City
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.city}</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pinCode" className="text-base font-medium">
+                          पिन कोड / Pin Code
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.pinCode}</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="village" className="text-base font-medium">
+                          गाँव / Village
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.village}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="aadharNumber" className="text-base font-medium">
+                          आधार नंबर / Aadhar Number
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.aadharNumber}</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber" className="text-base font-medium">
+                          संपर्क: मो. / Mobile No.
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.phoneNumber}</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="whatsappNumber" className="text-base font-medium">
+                          व्हाट्सऐप नंबर / Whatsapp No.
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.whatsappNumber}</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="emergencyContact" className="text-base font-medium">
+                        आपातकालीन नंबर / Emergency No.
+                      </Label>
+                      <div className="p-3 border rounded-md bg-gray-50">{formData.emergencyContact}</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-medium">
+                        वर्तमान में चल रही विशिष्ट तपस्या का विवरण / Details of the special tapasya being carried out at present
+                      </Label>
+                      <div className="p-3 border rounded-md bg-gray-50">{formData.existingTapasya || 'N/A'}</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <Label className="text-base font-medium whitespace-nowrap">
+                          {previousYatraMessage}
+                        </Label>
+                        <div className="p-3 border rounded-md bg-gray-50">{formData.hasParticipatedBefore ? 'हाँ / Yes' : 'नहीं / No'}</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="linkedForm" className="text-base font-medium">
+                        आपके परिवार से या किसी मित्र, संबधि ने फार्म भरा हो तो उनका Form Registration No./ If any
+                      </Label>
+                      <div className="p-3 border rounded-md bg-gray-50">{formData.linkedForm || 'N/A'}</div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <Label className="text-base font-medium">
+                          पासपोर्ट साइज़ फोटो / Passport Size Photo
+                        </Label>
+                        {photoPreview && (
+                          <div className="relative w-[140px] h-[180px] border rounded-lg overflow-hidden">
+                            <Image
+                              src={photoPreview}
+                              alt="Passport size photo preview"
+                              fill
+                              style={{ objectFit: 'cover' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        <Label className="text-base font-medium">
+                          आधार कार्ड / Aadhar Card
+                        </Label>
+                        {aadharPreview && (
+                          <div className="relative w-[140px] h-[180px] border rounded-lg overflow-hidden">
+                            <Image
+                              src={aadharPreview}
+                              alt="Aadhar card preview"
+                              fill
+                              style={{ objectFit: 'cover' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <p className="text-base font-medium text-gray-800 text-center">
+                        {bottomText}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleEdit}
+                        className="w-[200px]"
+                      >
+                        संपादित करें / Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="w-[200px]"
+                      >
+                        {loading ? 'प्रस्तुत कर रहा है... / Submitting...' : 'प्रस्तुत करें / Submit'}
+                      </Button>
+                    </div>
+                  </form>
+                </motion.section>
+              )}
+
+              {step === 'success' && (
+                <motion.section
+                  className="flex flex-col items-center"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="bg-white/90 p-8 rounded-lg shadow-lg max-w-4xl w-full text-center space-y-6">
+                    <div className="flex justify-center">
+                      <div className="relative w-24 h-24">
                         <Image
-                          src={photoPreview}
-                          alt="Passport size photo preview"
+                          src="/YASHVI LOGO 1 PNG.png"
+                          alt="Yashashvigiriraj Logo"
                           fill
-                          style={{ objectFit: 'cover' }}
+                          style={{ objectFit: 'contain' }}
                         />
                       </div>
-                    )}
+                    </div>
+
+                    <h2 className="text-2xl md:text-3xl font-bold text-green-600">
+                      पंजीकरण सफल! / Registration Successful!
+                    </h2>
+
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <p className="text-lg font-medium">आपका पंजीकरण आईडी / Your Registration ID:</p>
+                      <p className="text-2xl font-bold text-primary">{registrationId}</p>
+                      <p className="text-sm text-gray-700 mt-2">
+                        कृपया भविष्य के संदर्भ के लिए या फॉर्म की स्थिति जांचने के लिए इस आईडी को नोट करें।
+                        <br />
+                        Please note down this ID for future reference or to check the status of your form.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
+                      <Button 
+                        variant="outline"
+                        onClick={() => window.open('/check-status', '_blank')}
+                      >
+                        स्थिति जांचें / Check Status
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleDownloadPDF}
+                        disabled={pdfLoading}
+                      >
+                        {pdfLoading ? 'डाउनलोड हो रहा है... / Downloading...' : 'फॉर्म डाउनलोड करें / Download Form'}
+                      </Button>
+                      <Button onClick={handleNewRegistration}>
+                        नया पंजीकरण / New Registration
+                      </Button>
+                    </div>
                   </div>
-
-                  <div className="space-y-4">
-                    <Label className="text-base font-medium">
-                      आधार कार्ड / Aadhar Card
-                    </Label>
-                    {aadharPreview && (
-                      <div className="relative w-[140px] h-[180px] border rounded-lg overflow-hidden">
-                        <Image
-                          src={aadharPreview}
-                          alt="Aadhar card preview"
-                          fill
-                          style={{ objectFit: 'cover' }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="border-t pt-6">
-                  <p className="text-base font-medium text-gray-800 text-center">
-                    {bottomText}
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleEdit}
-                    className="w-[200px]"
-                  >
-                    संपादित करें / Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    className="w-[200px]"
-                  >
-                    {loading ? 'प्रस्तुत कर रहा है... / Submitting...' : 'प्रस्तुत करें / Submit'}
-                  </Button>
-                </div>
-              </form>
-            </motion.section>
-          )}
-
-          {step === 'success' && (
-            <motion.section
-              className="flex flex-col items-center"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="bg-white/90 p-8 rounded-lg shadow-lg max-w-4xl w-full text-center space-y-6">
-                <div className="flex justify-center">
-                  <div className="relative w-24 h-24">
-                    <Image
-                      src="/YASHVI LOGO 1 PNG.png"
-                      alt="Yashashvigiriraj Logo"
-                      fill
-                      style={{ objectFit: 'contain' }}
-                    />
-                  </div>
-                </div>
-
-                <h2 className="text-2xl md:text-3xl font-bold text-green-600">
-                  पंजीकरण सफल! / Registration Successful!
-                </h2>
-
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-lg font-medium">आपका पंजीकरण आईडी / Your Registration ID:</p>
-                  <p className="text-2xl font-bold text-primary">{registrationId}</p>
-                  <p className="text-sm text-gray-700 mt-2">
-                    कृपया भविष्य के संदर्भ के लिए या फॉर्म की स्थिति जांचने के लिए इस आईडी को नोट करें।
-                    <br />
-                    Please note down this ID for future reference or to check the status of your form.
-                  </p>
-                </div>
-
-                <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
-                  <Button 
-                    variant="outline"
-                    onClick={() => window.open('/check-status', '_blank')}
-                  >
-                    स्थिति जांचें / Check Status
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleDownloadPDF}
-                    disabled={pdfLoading}
-                  >
-                    {pdfLoading ? 'डाउनलोड हो रहा है... / Downloading...' : 'फॉर्म डाउनलोड करें / Download Form'}
-                  </Button>
-                  <Button onClick={handleNewRegistration}>
-                    नया पंजीकरण / New Registration
-                  </Button>
-                </div>
-              </div>
-            </motion.section>
+                </motion.section>
+              )}
+            </>
           )}
         </div>
       </main>
