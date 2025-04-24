@@ -65,21 +65,6 @@ export function Blessings() {
                     </h2>
                     <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
-                        src="/4.png"
-                        alt="मुनिराज श्री तीर्थवल्लभ विजयजी म.सा."
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        quality={100}
-                        priority
-                      />
-                    </div>
-                    <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री तीर्थवल्लभ विजयजी म.सा.</p>
-                  </div>
-
-                  {/* Fourth Avatar */}
-                  <div className="flex flex-col items-center">
-                    <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
-                      <Image
                         src="/3.jpg"
                         alt="मुनिराज श्री आध्यात्मयोग विजयजी म.सा."
                         fill
@@ -89,6 +74,21 @@ export function Blessings() {
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री आध्यात्मयोग विजयजी म.सा.</p>
+                  </div>
+
+                  {/* Fourth Avatar */}
+                  <div className="flex flex-col items-center">
+                    <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
+                      <Image
+                        src="/4.png"
+                        alt="मुनिराज श्री तीर्थवल्लभ विजयजी म.सा."
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
+                      />
+                    </div>
+                    <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री तीर्थवल्लभ विजयजी म.सा.</p>
                   </div>
 
                   {/* Fifth Avatar */}
@@ -167,19 +167,6 @@ export function Blessings() {
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
-                        src="/4.png"
-                        alt="मुनिराज श्री तीर्थवल्लभ विजयजी म.सा."
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        quality={100}
-                        priority
-                      />
-                    </div>
-                    <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री तीर्थवल्लभ विजयजी म.सा.</p>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
-                      <Image
                         src="/3.jpg"
                         alt="मुनिराज श्री आध्यात्मयोग विजयजी म.सा."
                         fill
@@ -189,6 +176,19 @@ export function Blessings() {
                       />
                     </div>
                     <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री आध्यात्मयोग विजयजी म.सा.</p>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
+                      <Image
+                        src="/4.png"
+                        alt="मुनिराज श्री तीर्थवल्लभ विजयजी म.सा."
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
+                      />
+                    </div>
+                    <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री तीर्थवल्लभ विजयजी म.सा.</p>
                   </div>
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
