@@ -65,6 +65,21 @@ export function Blessings() {
                     </h2>
                     <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
+                        src="/4.png"
+                        alt="मुनिराज श्री तीर्थवल्लभ विजयजी म.सा."
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
+                      />
+                    </div>
+                    <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री तीर्थवल्लभ विजयजी म.सा.</p>
+                  </div>
+
+                  {/* Fourth Avatar */}
+                  <div className="flex flex-col items-center">
+                    <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
+                      <Image
                         src="/3.jpg"
                         alt="मुनिराज श्री आध्यात्मयोग विजयजी म.सा."
                         fill
@@ -76,11 +91,11 @@ export function Blessings() {
                     <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री आध्यात्मयोग विजयजी म.सा.</p>
                   </div>
 
-                  {/* Fourth Avatar */}
+                  {/* Fifth Avatar */}
                   <div className="flex flex-col items-center">
                     <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
-                        src="/4.jpg"
+                        src="/5.jpg"
                         alt="प. पू. सा. श्री प्रार्थनाश्रीजी म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
@@ -90,11 +105,11 @@ export function Blessings() {
                     <p className="m-4 text-xl text-center font-bold text-primary">प. पू. सा. श्री प्रार्थनाश्रीजी म.सा.</p>
                   </div>
 
-                  {/* Fifth Avatar */}
+                  {/* Sixth Avatar */}
                   <div className="flex flex-col items-center">
                     <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
-                        src="/5.jpg"
+                        src="/6.jpg"
                         alt="प. पू. सा. श्री अर्हंप्रज्ञाश्रीजी म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
@@ -147,8 +162,21 @@ export function Blessings() {
                 <h2 className="text-3xl font-bold text-center mt-4 mb-8 text-primary">
                   गुरु कृपा
                 </h2>
-                {/* Second Row - 2 images */}
-                <div className="grid grid-cols-3 gap-6 mb-8">
+                {/* Second Row - 4 images 2 cols */}
+                <div className="grid grid-cols-2 gap-6 px-36">
+                  <div className="flex flex-col items-center">
+                    <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
+                      <Image
+                        src="/4.png"
+                        alt="मुनिराज श्री तीर्थवल्लभ विजयजी म.सा."
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        quality={100}
+                        priority
+                      />
+                    </div>
+                    <p className="m-4 text-xl text-center font-bold text-primary">मुनिराज श्री तीर्थवल्लभ विजयजी म.सा.</p>
+                  </div>
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
@@ -165,7 +193,7 @@ export function Blessings() {
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
-                        src="/4.jpg"
+                        src="/5.jpg"
                         alt="प. पू. सा. श्री प्रार्थनाश्रीजी म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
@@ -177,7 +205,7 @@ export function Blessings() {
                   <div className="flex flex-col items-center">
                     <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg hover:scale-105 transition-transform duration-300">
                       <Image
-                        src="/5.jpg"
+                        src="/6.jpg"
                         alt="प. पू. सा. श्री अर्हंप्रज्ञाश्रीजी म.सा."
                         fill
                         style={{ objectFit: 'cover' }}
