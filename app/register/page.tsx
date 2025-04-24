@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,7 +52,7 @@ interface UploadUrlResponse {
 
 export default function RegisterPage() {
   // States for the form
-  const [step, setStep] = useState<'categories' | 'form' | 'success'>('categories');
+  const [step, setStep] = useState<'categories' | 'form' | 'review' | 'success'>('categories');
   const [formType, setFormType] = useState<'SAN' | 'CHA' | 'NAV' | null>(null);
   const [formData, setFormData] = useState<{
     fullName?: string;
@@ -74,7 +73,8 @@ export default function RegisterPage() {
     photoPreview?: string;
     aadharPreview?: string;
   }>({
-    gender: 'M' // Set default gender value
+    gender: 'M',
+    hasParticipatedBefore: false // Set default gender value
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [aadharFile, setAadharFile] = useState<File | null>(null);
@@ -109,7 +109,8 @@ export default function RegisterPage() {
   const handleCategorySelect = (categoryId: 'SAN' | 'CHA' | 'NAV') => {
     // Reset all form data
     setFormData({
-      gender: 'M' // Set default gender value
+      gender: 'M',
+      hasParticipatedBefore: false
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -142,7 +143,16 @@ export default function RegisterPage() {
     if (capitalizeFields.includes(name)) {
       const capitalizedValue = value.toUpperCase();
       setFormData({ ...formData, [name]: capitalizedValue });
-    } else {
+    } 
+    // For numeric fields, ensure we store them as numbers
+    else if (['aadharNumber', 'phoneNumber', 'whatsappNumber', 'emergencyContact', 'age', 'pinCode'].includes(name)) {
+      // Only update if the value is a valid number or empty
+      if (value === '' || /^\d+$/.test(value)) {
+        setFormData({ ...formData, [name]: value });
+      }
+    } 
+    // For all other fields
+    else {
       setFormData({ ...formData, [name]: value });
     }
 
@@ -213,11 +223,6 @@ export default function RegisterPage() {
         [target.name]: newValue
       });
     }
-  };
-
-  // Handler for checkbox changes
-  const handleCheckboxChange = (checked: boolean) => {
-    setFormData({ ...formData, hasParticipatedBefore: checked });
   };
 
   // Handler for photo upload
@@ -435,6 +440,8 @@ export default function RegisterPage() {
       errors.emergencyContact = "आपातकालीन नंबर आवश्यक है / Emergency number is required";
     } else if (!/^\d{10}$/.test(formData.emergencyContact.toString())) {
       errors.emergencyContact = "आपातकालीन नंबर 10 अंकों का होना चाहिए / Emergency number should be 10 digits";
+    } else if (formData.emergencyContact === formData.phoneNumber) {
+      errors.emergencyContact = "आपातकालीन नंबर मोबाइल नंबर से अलग होना चाहिए / Emergency number should be different from mobile number";
     }
 
     // Validate photo
@@ -464,60 +471,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    // First validate the form
-    const isValid = validateForm();
-    
-    if (!isValid) {
-      setLoading(false);
-      
-      // Create a more descriptive error message
-      const missingFields = Object.entries(formErrors)
-        .filter(([, value]) => value)
-        .map(([key]) => {
-          switch (key) {
-            case 'photo':
-              return 'पासपोर्ट फोटो / Passport Photo';
-            case 'aadharCard':
-              return 'आधार कार्ड / Aadhar Card';
-            case 'fullName':
-              return 'पूरा नाम / Full Name';
-            case 'age':
-              return 'उम्र / Age';
-            case 'guardianName':
-              return 'पिता/पति का नाम / Father\'s/Husband\'s Name';
-            case 'address':
-              return 'पता / Address';
-            case 'city':
-              return 'शहर / City';
-            case 'pinCode':
-              return 'पिन कोड / Pin Code';
-            case 'village':
-              return 'गाँव / Village';
-            case 'aadharNumber':
-              return 'आधार नंबर / Aadhar Number';
-            case 'phoneNumber':
-              return 'फोन नंबर / Phone Number';
-            case 'whatsappNumber':
-              return 'व्हाट्सऐप नंबर / WhatsApp Number';
-            case 'emergencyContact':
-              return 'आपातकालीन नंबर / Emergency Number';
-            default:
-              return key;
-          }
-        });
-
-      // Set the error message
-      setError(`कृपया निम्नलिखित फ़ील्ड भरें / Please fill the following fields: ${missingFields.join(', ')}`);
-      
-      // Scroll to the top of the form
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-      
-      return;
-    }
 
     try {
       // Step 1: Get pre-signed URLs for both files
@@ -618,7 +571,8 @@ export default function RegisterPage() {
   const handleNewRegistration = () => {
     // Reset all form data
     setFormData({
-      gender: 'M' // Set default gender value
+      gender: 'M',
+      hasParticipatedBefore: false
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -866,6 +820,108 @@ export default function RegisterPage() {
     }
   };
 
+  // Modify the handleEdit function to preserve all form state
+  const handleEdit = () => {
+    // Clear any existing errors when going back to edit
+    setFormErrors({});
+    setError(null);
+    
+    // Preserve file previews
+    if (photoFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result) {
+          setPhotoPreview(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(photoFile);
+    }
+
+    if (aadharFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result) {
+          setAadharPreview(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(aadharFile);
+    }
+    
+    // Move to form step
+    setStep('form');
+    
+    // Scroll to top
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
+  // Modify the handleReview function to preserve form data
+  const handleReview = () => {
+    // Clear any existing errors before validation
+    setFormErrors({});
+    setError(null);
+    
+    // Validate form before proceeding to review
+    const isValid = validateForm();
+    if (!isValid) {
+      // Create a more descriptive error message
+      const missingFields = Object.entries(formErrors)
+        .filter(([, value]) => value)
+        .map(([key]) => {
+          switch (key) {
+            case 'photo':
+              return 'पासपोर्ट फोटो / Passport Photo';
+            case 'aadharCard':
+              return 'आधार कार्ड / Aadhar Card';
+            case 'fullName':
+              return 'पूरा नाम / Full Name';
+            case 'age':
+              return 'उम्र / Age';
+            case 'guardianName':
+              return 'पिता/पति का नाम / Father\'s/Husband\'s Name';
+            case 'address':
+              return 'पता / Address';
+            case 'city':
+              return 'शहर / City';
+            case 'pinCode':
+              return 'पिन कोड / Pin Code';
+            case 'village':
+              return 'गाँव / Village';
+            case 'aadharNumber':
+              return 'आधार नंबर / Aadhar Number';
+            case 'phoneNumber':
+              return 'फोन नंबर / Phone Number';
+            case 'whatsappNumber':
+              return 'व्हाट्सऐप नंबर / WhatsApp Number';
+            case 'emergencyContact':
+              return 'आपातकालीन नंबर / Emergency Number';
+            default:
+              return key;
+          }
+        });
+
+      // Set the error message
+      setError(`कृपया निम्नलिखित फ़ील्ड भरें / Please fill the following fields: ${missingFields.join(', ')}`);
+      
+      // Scroll to the top of the form
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+      
+      return;
+    }
+
+    // If validation passes, proceed to review step
+    setStep('review');
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
       <RegistrationNavigation />
@@ -990,6 +1046,7 @@ export default function RegisterPage() {
                         max="120"
                         onChange={handleInputChange}
                         className={formErrors.age ? "border-red-500" : ""}
+                        value={formData.age?.toString() || ''}
                       />
                       <RadioGroup
                         value={formData.gender}
@@ -1084,6 +1141,7 @@ export default function RegisterPage() {
                       required
                       onChange={handleInputChange}
                       className={formErrors.pinCode ? "border-red-500" : ""}
+                      value={formData.pinCode?.toString() || ''}
                     />
                     {formErrors.pinCode && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.pinCode}</p>
@@ -1123,6 +1181,7 @@ export default function RegisterPage() {
                       onKeyDown={handleNumericInput}
                       onPaste={handlePaste}
                       className={formErrors.aadharNumber ? "border-red-500" : ""}
+                      value={formData.aadharNumber?.toString() || ''}
                     />
                     {formErrors.aadharNumber && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.aadharNumber}</p>
@@ -1144,6 +1203,7 @@ export default function RegisterPage() {
                       onKeyDown={handleNumericInput}
                       onPaste={handlePaste}
                       className={formErrors.phoneNumber ? "border-red-500" : ""}
+                      value={formData.phoneNumber?.toString() || ''}
                     />
                     {formErrors.phoneNumber && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.phoneNumber}</p>
@@ -1165,6 +1225,7 @@ export default function RegisterPage() {
                       onKeyDown={handleNumericInput}
                       onPaste={handlePaste}
                       className={formErrors.whatsappNumber ? "border-red-500" : ""}
+                      value={formData.whatsappNumber?.toString() || ''}
                     />
                     {formErrors.whatsappNumber && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.whatsappNumber}</p>
@@ -1186,6 +1247,7 @@ export default function RegisterPage() {
                       onKeyDown={handleNumericInput}
                       onPaste={handlePaste}
                       className={formErrors.emergencyContact ? "border-red-500" : ""}
+                      value={formData.emergencyContact?.toString() || ''}
                     />
                     {formErrors.emergencyContact && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.emergencyContact}</p>
@@ -1207,14 +1269,26 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center space-x-3">
-                    <Checkbox
-                      id="hasParticipatedBefore"
-                      onCheckedChange={handleCheckboxChange}
-                    />
-                    <Label htmlFor="hasParticipatedBefore" className="text-base">
-                      {previousYatraMessage} ? YES/NO
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    <Label className="text-base font-medium whitespace-nowrap">
+                      {previousYatraMessage}
                     </Label>
+                    <RadioGroup
+                      value={formData.hasParticipatedBefore ? 'yes' : 'no'}
+                      className="flex space-x-4"
+                      onValueChange={(value: 'yes' | 'no') => {
+                        setFormData({ ...formData, hasParticipatedBefore: value === 'yes' });
+                      }}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="yes" id="yes" />
+                        <Label htmlFor="yes">हाँ / Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <RadioGroupItem value="no" id="no" />
+                        <Label htmlFor="no">नहीं / No</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
                 </div>
 
@@ -1369,7 +1443,208 @@ export default function RegisterPage() {
                     वापस / Back
                   </Button>
                   <Button
-                    type="submit"
+                    type="button"
+                    onClick={handleReview}
+                    className="w-[200px]"
+                  >
+                    समीक्षा करें / Review
+                  </Button>
+                </div>
+              </form>
+            </motion.section>
+          )}
+
+          {step === 'review' && (
+            <motion.section
+              className="flex flex-col items-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <form className="w-full max-w-5xl space-y-8 bg-white/90 p-8 rounded-lg shadow-lg">
+                <div className="w-full max-w-6xl mb-4 flex justify-start">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleEdit}
+                    className="flex items-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
+                      <path d="m12 19-7-7 7-7" />
+                      <path d="M19 12H5" />
+                    </svg>
+                    वापस / Back
+                  </Button>
+                </div>
+                <div className="w-full mb-8">
+                  <Image
+                    src={`/${formType === 'SAN' ? 'Full Sangh' : formType === 'CHA' ? 'Charipalith Sangh' : 'Navanu'} Header.jpg`}
+                    alt={`${categories.find(c => c.id === formType)?.titleHindi} Header`}
+                    width={800}
+                    height={200}
+                    className="w-full rounded-lg object-contain"
+                    priority
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName" className="text-base font-medium">
+                      आराधक का पूरा नाम / Full Name
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.fullName}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-base font-medium">
+                      उम्र / Age
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.age} - {formData.gender === 'M' ? 'पुरुष' : 'स्त्री'}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="guardianName" className="text-base font-medium">
+                    पिता या पति का नाम / Father&apos;s or Husband&apos;s Name
+                  </Label>
+                  <div className="p-3 border rounded-md bg-gray-50">{formData.guardianName}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="text-base font-medium">
+                    पता / Address
+                  </Label>
+                  <div className="p-3 border rounded-md bg-gray-50">{formData.address}</div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="city" className="text-base font-medium">
+                      शहर / City
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.city}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pinCode" className="text-base font-medium">
+                      पिन कोड / Pin Code
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.pinCode}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="village" className="text-base font-medium">
+                      गाँव / Village
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.village}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="aadharNumber" className="text-base font-medium">
+                      आधार नंबर / Aadhar Number
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.aadharNumber}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber" className="text-base font-medium">
+                      संपर्क: मो. / Mobile No.
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.phoneNumber}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsappNumber" className="text-base font-medium">
+                      व्हाट्सऐप नंबर / Whatsapp No.
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.whatsappNumber}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContact" className="text-base font-medium">
+                    आपातकालीन नंबर / Emergency No.
+                  </Label>
+                  <div className="p-3 border rounded-md bg-gray-50">{formData.emergencyContact}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">
+                    वर्तमान में चल रही विशिष्ट तपस्या का विवरण / Details of the special tapasya being carried out at present
+                  </Label>
+                  <div className="p-3 border rounded-md bg-gray-50">{formData.existingTapasya || 'N/A'}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    <Label className="text-base font-medium whitespace-nowrap">
+                      {previousYatraMessage}
+                    </Label>
+                    <div className="p-3 border rounded-md bg-gray-50">{formData.hasParticipatedBefore ? 'हाँ / Yes' : 'नहीं / No'}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="linkedForm" className="text-base font-medium">
+                    आपके परिवार से या किसी मित्र, संबधि ने फार्म भरा हो तो उनका Form Registration No./ If any
+                  </Label>
+                  <div className="p-3 border rounded-md bg-gray-50">{formData.linkedForm || 'N/A'}</div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium">
+                      पासपोर्ट साइज़ फोटो / Passport Size Photo
+                    </Label>
+                    {photoPreview && (
+                      <div className="relative w-[140px] h-[180px] border rounded-lg overflow-hidden">
+                        <Image
+                          src={photoPreview}
+                          alt="Passport size photo preview"
+                          fill
+                          style={{ objectFit: 'cover' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium">
+                      आधार कार्ड / Aadhar Card
+                    </Label>
+                    {aadharPreview && (
+                      <div className="relative w-[140px] h-[180px] border rounded-lg overflow-hidden">
+                        <Image
+                          src={aadharPreview}
+                          alt="Aadhar card preview"
+                          fill
+                          style={{ objectFit: 'cover' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t pt-6">
+                  <p className="text-base font-medium text-gray-800 text-center">
+                    {bottomText}
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleEdit}
+                    className="w-[200px]"
+                  >
+                    संपादित करें / Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
                     disabled={loading}
                     className="w-[200px]"
                   >
@@ -1414,7 +1689,10 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
-                  <Button variant="outline">
+                  <Button 
+                    variant="outline"
+                    onClick={() => window.open('/check-status', '_blank')}
+                  >
                     स्थिति जांचें / Check Status
                   </Button>
                   <Button
