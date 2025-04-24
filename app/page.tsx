@@ -6,7 +6,7 @@ import { Navigation } from '@/components/Navigation'
 import { RegistrationBanner } from '@/components/RegistrationBanner'
 import { ContactUs } from '@/components/ContactUs'
 import { About } from '@/components/About'
-import { ImageCarousel } from '@/components/ImageCarousel'
+// import { ImageCarousel } from '@/components/ImageCarousel'
 import { JeevithMahotsav } from '@/components/JeevithMahotsav'
 import { Blessings } from '@/components/Blessings'
 
@@ -26,9 +26,9 @@ export default function Home() {
           <section id="videos">
             <VideoCarousel />
           </section>
-          <section id="images">
+          {/* <section id="images">
             <ImageCarousel />
-          </section>
+          </section> */}
           <section id="registration">
             <RegistrationBanner />
           </section>
