@@ -12,7 +12,12 @@ enum RecordType {
   SANGH = 'SAN',
 }
 
-const STARTING_ID = 1000;
+// Different starting IDs for each category
+const STARTING_IDS = {
+  [RecordType.CHARIPALITH]: 1601,  // CHA1601 onwards
+  [RecordType.NAVANU]: 1301,       // NAV1301 onwards
+  [RecordType.SANGH]: 1501,        // SAN1501 onwards
+};
 
 /**
  * Get the next available ID for registration using atomic counter
@@ -30,7 +35,7 @@ async function getNextId(type: RecordType): Promise<number> {
         },
         UpdateExpression: "SET currentValue = if_not_exists(currentValue, :start) + :increment",
         ExpressionAttributeValues: {
-          ":start": STARTING_ID - 1, // Start - 1 so first increment gives exactly STARTING_ID
+          ":start": STARTING_IDS[type] - 1, // Start - 1 so first increment gives exactly STARTING_ID
           ":increment": 1
         },
         ReturnValues: "UPDATED_NEW"
