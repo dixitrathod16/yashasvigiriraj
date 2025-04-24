@@ -36,15 +36,27 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api')) {
     // First, check if the request is from our UI
     const referer = request.headers.get('referer');
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+    // const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+
+    const allowedReferers: string[] = [
+      process.env.NEXT_PUBLIC_SITE_URL || '',
+      process.env.NEXT_DEVELOPMENT_SITE_URL || '',
+    ];
     
-    // Extract hostname from NEXT_PUBLIC_SITE_URL
-    let allowedHost;
-    try {
-      allowedHost = new URL(siteUrl).hostname;
-    } catch {
-      allowedHost = siteUrl;
-    }
+
+    const allowedHosts: string[] = [];
+    
+    // Extract hostname from NEXT_PUBLIC_SITE_URL, NEXT_DEVELOPMENT_SITE_URL
+    allowedReferers.forEach(siteUrl => {
+      if (!siteUrl) {
+        return;
+      }
+      try{
+        allowedHosts.push(new URL(siteUrl).hostname);
+      } catch {
+        allowedHosts.push(siteUrl);
+      }
+    });
 
     // Extract hostname from referer
     let refererHost;
@@ -54,9 +66,16 @@ export async function middleware(request: NextRequest) {
       refererHost = null;
     }
 
+    let invalidReferer = true;
     // If not from our UI, reject immediately
-    if (!referer || !refererHost || !refererHost.includes(allowedHost)) {
-      console.log(`Invalid referer: ${referer}, allowed host: ${allowedHost}`);
+    for (const allowedHost of allowedHosts) {
+      if (referer && refererHost && refererHost.includes(allowedHost)) {
+        invalidReferer = false;
+        break;
+      }
+    }
+
+    if (invalidReferer) {
       return NextResponse.json(
         { error: 'Invalid request origin' },
         { status: 403 }
