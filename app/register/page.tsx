@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CountdownTimer } from '@/components/CountdownTimer';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Categories data
 const categories = [
@@ -45,6 +46,124 @@ const categories = [
   }
 ];
 
+const CharipalithRules = () => {
+  return (
+    <>
+      <h3 className="text-xl font-semibold mb-4">छ:री पालित संघ के नियम</h3>
+      <ol className="list-decimal pl-6 space-y-2">
+        <li>
+          <span className="font-bold">पादविहारी:</span>
+          <ul className="list-disc pl-5">
+            <li>गुरुभगवंतों के साथ उन्हीं की तरह पैदल विहार करके यात्रा करनी होती है।</li>
+            <li>बस, ट्रेन आदि साधनों से भी तीर्थों की यात्रा हो सकती है, किन्तु उसमें जयणा, कायकष्ट, अन्य जीवों के प्रति दुःख का संवेदन, जिनाज्ञा का पालन नहीं होता... लेकिन पादविहार में होता है।</li>
+            <li>मौनपूर्वक साढ़े तीन हाथ प्रमाण भूमि पर नजर करके जीवदया पालन करते हुए विहार करना उसी का नाम है... पादविहार!</li>
+          </ul>
+        </li>
+        <li>
+          <span className="font-bold">भूमिसंथारी:</span>
+          <ul className="list-disc pl-5">
+            <li>भूमि पर संथाराशयन करना।</li>
+            <li>पलंग, गादी, तकिया आदि वस्तु का त्याग करना चाहिए।</li>
+          </ul>
+        </li>
+        <li>
+          <span className="font-bold">ब्रह्मचारी:</span>
+          <ul className="list-disc pl-5">
+            <li>शुद्ध ब्रह्मचर्य का पालन करना चाहिए।</li>
+            <li>पुरुष एवं स्त्री को साथ में नहीं रहना चाहिए।</li>
+          </ul>
+        </li>
+        <li>
+          <span className="font-bold">सचितपरिहारी:</span>
+          <ul className="list-disc pl-5">
+            <li>सचित (अभक्ष्य) खान-पान का त्याग करना।</li>
+            <li>बिना उबाला हुआ (कच्चा) पानी का त्याग करना।</li>
+          </ul>
+        </li>
+        <li>
+          <span className="font-bold">एकाहारी:</span>
+          <ul className="list-disc pl-5">
+            <li>प्रतिदिन कम से कम एकासणा का पच्चक्खाण करना एवं गरम पानी उपयोग करना।</li>
+            <li>रात्रि भोजन का त्याग करना।</li>
+          </ul>
+        </li>
+        <li>
+          <span className="font-bold">आवश्यककारी:</span>
+          <ul className="list-disc pl-5">
+            <li>वीर प्रभु की बताई गई ६ आवश्यक जैसे सुबह और शाम प्रतिक्रमण एवं अन्य धार्मिक क्रियाएँ करना अनिवार्य है।</li>
+          </ul>
+        </li>
+      </ol>
+    </>
+  )
+}
+
+const NavanuRules = () => {
+  return (
+    <>
+      <>
+        <h3 className="text-xl font-semibold mb-4">नवाणु के नियम</h3>
+        <ol className="list-decimal pl-6 space-y-2">
+          <li>
+            <span className="font-bold">सचित्त परिहारी:</span>
+            <ul className="list-disc pl-5">
+              <li>सभी प्रकार के निषिद्ध खाद्य पदार्थों से परहेज, जैसे कंदमूल, खमीर वाली रोटी, या डिब्बाबंद खाना।</li>
+            </ul>
+          </li>
+          <li>
+            <span className="font-bold">एकासना:</span>
+            <ul className="list-disc pl-5">
+              <li>दिन में केवल एक बार भोजन ग्रहण करना।</li>
+            </ul>
+          </li>
+          <li>
+            <span className="font-bold">पद चारी:</span>
+            <ul className="list-disc pl-5">
+              <li>नंगे पैर चलना और अपने पैरों के अलावा किसी अन्य परिवहन का उपयोग न करना।</li>
+            </ul>
+          </li>
+          <li>
+            <span className="font-bold">भूमि शयन (संथारा):</span>
+            <ul className="list-disc pl-5">
+              <li>जमीन पर सोना।</li>
+            </ul>
+          </li>
+          <li>
+            <span className="font-bold">ब्रह्मचर्य:</span>
+            <ul className="list-disc pl-5">
+              <li>कर्म और विचार दोनों में यौन संयम का पालन करना।</li>
+            </ul>
+          </li>
+          <li>
+            <span className="font-bold">प्रतिक्रमण:</span>
+            <ul className="list-disc pl-5">
+              <li>दिन में दो बार प्रतिक्रमण विधि का पालन करना (सुबह और शाम)।</li>
+            </ul>
+          </li>
+        </ol>
+        <h4 className="text-lg font-semibold mt-6 mb-2">दैनिक आराधना और अनुष्ठान:</h4>
+        <ul className="list-disc pl-6 space-y-1">
+          <li>प्रतिदिन कम से कम दो बार यात्रा करनी चाहिए (यदि संभव हो)।</li>
+          <li>प्रतिदिन सुबह और शाम प्रतिक्रमण, सेवा-पूजा, प्रवचन, प्रभु भक्ति में भाग लेना अनिवार्य है।</li>
+          <li>कुल मिलाकर 108 बार मुख्य मंदिर की यात्रा पूरी करनी होती है - 99 बार आदिनाथ के पूर्व यात्राओं के स्मरण में और 9 बार अपनी आत्मरक्षा के लिए।</li>
+          <li>प्रत्येक यात्रा में पांच निर्धारित पवित्र स्थलों पर आवश्यक धार्मिक अनुष्ठान करने होते हैं।</li>
+          <li>यात्रा विशेष मार्गों से की जाती है, जैसे घेटी पाग से शुरू होकर, जहां से भगवान आदिनाथ ने अपनी यात्रा शुरू की थी।</li>
+        </ul>
+        <h4 className="text-lg font-semibold mt-6 mb-2">वेशभूषा और आचरण:</h4>
+        <ul className="list-disc pl-6 space-y-1">
+          <li>यात्रा के दौरान वेशभूषा भारतीय संस्कृति के अनुसार होनी चाहिए। बरमूडा, जींस, लुंगी, गाउन जैसे अशालीन वस्त्र वर्जित हैं।</li>
+          <li>सर्दी के मौसम में गर्म कपड़े, शाल आदि साथ रखना चाहिए।</li>
+          <li>यात्रा के दौरान ब्रह्मचर्य का पालन और संथारा शयन (जमीन पर सोना) अनिवार्य है।</li>
+          <li>यात्रा के अलावा बाहर घूमने या दर्शन-पूजा के लिए जाना निषिद्ध है।</li>
+          <li>नवकार मंत्र का जाप करते हुए यात्रा करें। जहां भगवान की प्रतिमा या पगलिए हों, वहां &ldquo;नमो जिणाणं&rdquo; बोलें।</li>
+          <li>जहां मोक्षगामी महापुरुषों के पगलिए हों, वहां &ldquo;नमो सिद्धाणं&rdquo; बोलें।</li>
+          <li>जहां देवी-देवताओं की प्रतिमा हो, वहां &ldquo;प्रणाम&rdquo; करें।</li>
+        </ul>
+      </>
+    </>
+  )
+}
+
 interface UploadUrlResponse {
   url: string;
   key: string;
@@ -56,7 +175,7 @@ const registrationStartDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_STAR
 
 export default function RegisterPage() {
   // States for the form
-  const [step, setStep] = useState<'categories' | 'form' | 'review' | 'success'>('categories');
+  const [step, setStep] = useState<'categories' | 'rules' | 'form' | 'review' | 'success'>('categories');
   const [formType, setFormType] = useState<'SAN' | 'CHA' | 'NAV' | null>(null);
   const [formData, setFormData] = useState<{
     fullName?: string;
@@ -109,6 +228,7 @@ export default function RegisterPage() {
   const [photoInputKey, setPhotoInputKey] = useState(0);
   const [aadharInputKey, setAadharInputKey] = useState(0);
   const [hasRegistrationStarted, setHasRegistrationStarted] = useState(new Date() >= registrationStartDate);
+  const [agreedToRules, setAgreedToRules] = useState(false);
 
   const handleCountdownComplete = () => {
     setHasRegistrationStarted(true);
@@ -132,9 +252,10 @@ export default function RegisterPage() {
 
     // Set new category and step
     setFormType(categoryId);
-    setStep('form');
+    setStep('rules');
     setPreviousYatraMessage(categories.find(c => c.id === categoryId)?.previousYatraMessage || null);
     setBottomText(categories.find(c => c.id === categoryId)?.bottomText || null);
+    setAgreedToRules(false); // Reset checkbox
 
     // Scroll to top of the page
     window.scrollTo({
@@ -577,7 +698,7 @@ export default function RegisterPage() {
   };
 
   // Handler for new registration
-  const handleNewRegistration = () => {
+  const handleNewRegistration = (skipStepSetup: boolean = false) => {
     // Reset all form data
     setFormData({
       gender: 'M',
@@ -593,10 +714,13 @@ export default function RegisterPage() {
     setRegistrationId(null);
 
     // Reset category and step
-    setStep('categories');
-    setFormType(null);
-    setPreviousYatraMessage(null);
-    setBottomText(null);
+    if (!skipStepSetup) {
+      setStep('categories');    
+      setFormType(null);
+      setPreviousYatraMessage(null);
+      setBottomText(null);
+    }
+    setAgreedToRules(false); // Reset checkbox
 
     // Scroll to top of the page
     window.scrollTo({
@@ -931,6 +1055,17 @@ export default function RegisterPage() {
     });
   };
 
+  const handleProceedFromRules = () => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    setStep('form');
+  };
+
+  const handleBackToRules = () => {
+    handleNewRegistration(true);
+    setStep('rules');
+    setAgreedToRules(false); // Reset checkbox
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
       <RegistrationNavigation />
@@ -1016,6 +1151,58 @@ export default function RegisterPage() {
                 </motion.section>
               )}
 
+              {step === 'rules' && formType && (
+                <motion.section
+                  className="flex flex-col items-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="w-full max-w-5xl bg-white/90 p-8 rounded-lg shadow-lg space-y-6">
+                    {/* Add this block for the top back button */}
+                    <div className="w-full max-w-6xl mb-4 flex justify-start">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleNewRegistration()}
+                        className="flex items-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
+                          <path d="m12 19-7-7 7-7" />
+                          <path d="M19 12H5" />
+                        </svg>
+                        वापस / Back
+                      </Button>
+                    </div>
+                    <h2 className="text-2xl font-bold text-center text-primary mb-4">नियम / Rules</h2>
+                    <div className="prose max-w-none text-gray-800 text-lg leading-relaxed">
+                      {formType === 'NAV' ? <NavanuRules /> : <CharipalithRules />}
+
+                      <div className="border-t pt-6">
+                        <div className="flex items-start gap-3 w-full">
+                          <Checkbox id="agree-rules" checked={agreedToRules} onCheckedChange={(checked) => setAgreedToRules(checked === true)} className="mt-1" />
+                          <Label htmlFor="agree-rules" className="text-base font-medium cursor-pointer select-none w-full">
+                            {bottomText}
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleNewRegistration()}
+                        className="w-[200px]"
+                      >
+                        वापस / Back
+                      </Button>
+                      <Button onClick={handleProceedFromRules} disabled={!agreedToRules} className="w-[200px]">
+                        आगे बढ़ें / Continue
+                      </Button>
+                    </div>
+                  </div>
+                </motion.section>
+              )}
+
               {step === 'form' && formType && (
                 <motion.section
                   className="flex flex-col items-center"
@@ -1028,7 +1215,7 @@ export default function RegisterPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleNewRegistration}
+                        onClick={handleBackToRules}
                         className="flex items-center gap-2"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
@@ -1469,17 +1656,17 @@ export default function RegisterPage() {
                       </div>
                     </div>
 
-                    <div className="border-t pt-6">
+                    {/* <div className="border-t pt-6">
                       <p className="text-base font-medium text-gray-800 text-center">
                         {bottomText}
                       </p>
-                    </div>
+                    </div> */}
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleNewRegistration}
+                        onClick={handleBackToRules}
                         className="w-[200px]"
                       >
                         वापस / Back
@@ -1508,7 +1695,7 @@ export default function RegisterPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleEdit}
+                        onClick={handleBackToRules}
                         className="flex items-center gap-2"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
@@ -1744,7 +1931,7 @@ export default function RegisterPage() {
                       >
                         {pdfLoading ? 'डाउनलोड हो रहा है... / Downloading...' : 'फॉर्म डाउनलोड करें / Download Form'}
                       </Button>
-                      <Button onClick={handleNewRegistration}>
+                      <Button onClick={() => handleNewRegistration()}>
                         नया पंजीकरण / New Registration
                       </Button>
                     </div>
