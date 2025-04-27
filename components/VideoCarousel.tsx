@@ -173,8 +173,8 @@ export function VideoCarousel() {
     <Card className="w-full p-3 md:p-8 border-2 border-primary/20">
       <CardContent className="px-0 md:p-8 max-w-[1600px] mx-auto w-full">
         <h2 className="text-3xl font-bold text-center mb-8 text-primary decorative-border">
-          गैलरी
-          {/* वीडियो गैलरी */}
+          {/* गैलरी */}
+          वीडियो गैलरी
         </h2>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
