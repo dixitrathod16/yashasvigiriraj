@@ -6,13 +6,24 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useRouter } from "next/navigation"
+import { CountdownTimer } from "@/components/CountdownTimer"
 
 export function RegistrationBanner() {
+  const router = useRouter()
   const [showForm, setShowForm] = useState(false)
   const [fullName, setFullName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [hasConsent, setHasConsent] = useState(false)
+  const [hasRegistrationStarted, setHasRegistrationStarted] = useState(false)
+
+  // Get registration start date from environment variable
+  const registrationStartDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_START_DATE || '2025-04-30T00:00:00')
+
+  const handleCountdownComplete = () => {
+    setHasRegistrationStarted(true)
+  }
 
   const handleSubmit = async () => {
     // Basic validations
@@ -88,13 +99,93 @@ export function RegistrationBanner() {
         <h2 className="text-3xl font-bold text-center mb-4 text-primary decorative-border">
           पंजीकरण
         </h2>
-        <p className="text-center text-lg mb-6">
-          Online Registrations Starts From 30th April 2025
-        </p>
         <AnimatePresence mode="wait">
-          {!showForm ? (
+          {!hasRegistrationStarted ? (
             <motion.div
-              key="button"
+              key="countdown"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-6"
+            >
+              <CountdownTimer 
+                targetDate={registrationStartDate}
+                onCountdownComplete={handleCountdownComplete}
+                showCard={false}
+              />
+              {!showForm ? (
+                <motion.div
+                  key="button"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="flex justify-center"
+                >
+                  <Button
+                    size="lg"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => setShowForm(true)}
+                  >
+                    Notify Me
+                  </Button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="flex flex-col gap-4 max-w-md mx-auto"
+                >
+                  <Input
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="flex-1"
+                    disabled={isLoading}
+                  />
+                  <Input
+                    type="tel"
+                    placeholder="Enter your phone number"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      // Only allow digits and limit to 10 characters
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      setPhoneNumber(value)
+                    }}
+                    className="flex-1"
+                    disabled={isLoading}
+                    inputMode="numeric"
+                  />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="consent"
+                      checked={hasConsent}
+                      onCheckedChange={(checked) => setHasConsent(checked as boolean)}
+                      disabled={isLoading}
+                    />
+                    <label
+                      htmlFor="consent"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Yes, I want to receive important updates through WhatsApp/SMS
+                    </label>
+                  </div>
+                  <Button
+                    size="lg"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
+                    onClick={handleSubmit}
+                    disabled={isLoading || !hasConsent}
+                  >
+                    {isLoading ? "Registering..." : "Submit"}
+                  </Button>
+                </motion.div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="register-button"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -103,61 +194,9 @@ export function RegistrationBanner() {
               <Button
                 size="lg"
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => setShowForm(true)}
+                onClick={() => router.push('/register')}
               >
-                Notify Me
-              </Button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="form"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="flex flex-col gap-4 max-w-md mx-auto"
-            >
-              <Input
-                type="text"
-                placeholder="Enter your full name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="flex-1"
-                disabled={isLoading}
-              />
-              <Input
-                type="tel"
-                placeholder="Enter your phone number"
-                value={phoneNumber}
-                onChange={(e) => {
-                  // Only allow digits and limit to 10 characters
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 10)
-                  setPhoneNumber(value)
-                }}
-                className="flex-1"
-                disabled={isLoading}
-                inputMode="numeric"
-              />
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="consent"
-                  checked={hasConsent}
-                  onCheckedChange={(checked) => setHasConsent(checked as boolean)}
-                  disabled={isLoading}
-                />
-                <label
-                  htmlFor="consent"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Yes, I want to receive important updates through WhatsApp/SMS
-                </label>
-              </div>
-              <Button
-                size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
-                onClick={handleSubmit}
-                disabled={isLoading || !hasConsent}
-              >
-                {isLoading ? "Registering..." : "Submit"}
+                Register Now
               </Button>
             </motion.div>
           )}

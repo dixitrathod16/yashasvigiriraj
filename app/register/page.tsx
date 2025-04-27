@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { RegistrationNavigation } from '@/components/RegistrationNavigation';
 import { Footer } from '@/components/Footer';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -129,7 +129,7 @@ export default function RegisterPage() {
     setError(null);
     setFormErrors({});
     setRegistrationId(null);
-    
+
     // Set new category and step
     setFormType(categoryId);
     setStep('form');
@@ -152,14 +152,14 @@ export default function RegisterPage() {
     if (capitalizeFields.includes(name)) {
       const capitalizedValue = value.toUpperCase();
       setFormData({ ...formData, [name]: capitalizedValue });
-    } 
+    }
     // For numeric fields, ensure we store them as numbers
     else if (['aadharNumber', 'phoneNumber', 'whatsappNumber', 'emergencyContact', 'age', 'pinCode'].includes(name)) {
       // Only update if the value is a valid number or empty
       if (value === '' || /^\d+$/.test(value)) {
         setFormData({ ...formData, [name]: value });
       }
-    } 
+    }
     // For all other fields
     else {
       setFormData({ ...formData, [name]: value });
@@ -591,7 +591,7 @@ export default function RegisterPage() {
     setError(null);
     setFormErrors({});
     setRegistrationId(null);
-    
+
     // Reset category and step
     setStep('categories');
     setFormType(null);
@@ -834,7 +834,7 @@ export default function RegisterPage() {
     // Clear any existing errors when going back to edit
     setFormErrors({});
     setError(null);
-    
+
     // Preserve file previews
     if (photoFile) {
       const reader = new FileReader();
@@ -855,10 +855,10 @@ export default function RegisterPage() {
       };
       reader.readAsDataURL(aadharFile);
     }
-    
+
     // Move to form step
     setStep('form');
-    
+
     // Scroll to top
     window.scrollTo({
       top: 0,
@@ -871,7 +871,7 @@ export default function RegisterPage() {
     // Clear any existing errors before validation
     setFormErrors({});
     setError(null);
-    
+
     // Validate form before proceeding to review
     const isValid = validateForm();
     if (!isValid) {
@@ -913,13 +913,13 @@ export default function RegisterPage() {
 
       // Set the error message
       setError(`कृपया निम्नलिखित फ़ील्ड भरें / Please fill the following fields: ${missingFields.join(', ')}`);
-      
+
       // Scroll to the top of the form
       window.scrollTo({
         top: 0,
         behavior: 'smooth'
       });
-      
+
       return;
     }
 
@@ -937,10 +937,38 @@ export default function RegisterPage() {
       <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-20">
         <div className="container mx-auto px-4 md:px-10 py-8 md:py-12 space-y-8">
           {!hasRegistrationStarted ? (
-            <CountdownTimer 
-              targetDate={registrationStartDate} 
-              onCountdownComplete={handleCountdownComplete}
-            />
+            <>
+              <Card className="w-full p-3 md:p-8 border-2 border-primary/20">
+                <CardContent className="px-0 md:p-8 max-w-[1600px] mx-auto w-full">
+                  <h2 className="text-3xl font-bold text-center mb-4 text-primary decorative-border">
+                    पंजीकरण
+                  </h2>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key="countdown"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="space-y-6"
+                    >
+                      <CountdownTimer
+                        targetDate={registrationStartDate}
+                        onCountdownComplete={handleCountdownComplete}
+                        showCard={false}
+                      />
+                      <div className="flex justify-center"> {/* Flex container to center the button */}
+                        <Button
+                          className="mt-4" // Add margin for spacing
+                          onClick={() => window.open('/', '_self')} // Redirect to home page
+                        >
+                          Go Back to Home
+                        </Button>
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
+                </CardContent>
+              </Card>
+            </>
           ) : (
             <>
               {step === 'categories' && (
@@ -1026,7 +1054,7 @@ export default function RegisterPage() {
                         <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     )}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="fullName" className="text-base font-medium">
                           आराधक का पूरा नाम / Full Name
@@ -1328,9 +1356,8 @@ export default function RegisterPage() {
                         </Label>
                         <div className="flex flex-col gap-4 items-start">
                           <div className="relative">
-                            <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${
-                              formErrors.photo ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
-                            }`}>
+                            <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${formErrors.photo ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
+                              }`}>
                               {photoPreview ? (
                                 <div className="relative w-full h-full">
                                   <Image
@@ -1388,9 +1415,8 @@ export default function RegisterPage() {
                         </Label>
                         <div className="flex flex-col gap-4 items-start">
                           <div className="relative">
-                            <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${
-                              formErrors.aadharCard ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
-                            }`}>
+                            <div className={`flex items-center justify-center w-[140px] h-[180px] border-2 border-dashed rounded-lg transition-colors bg-white ${formErrors.aadharCard ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-blue-500"
+                              }`}>
                               {aadharPreview ? (
                                 <div className="relative w-full h-full">
                                   <Image
@@ -1705,7 +1731,7 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={() => window.open('/check-status', '_blank')}
                       >

@@ -326,7 +326,7 @@ export default function RegistrationsPage() {
                   <h3 className="font-semibold">Passport Photo</h3>
                   <div className="mt-2 relative w-32 h-40 border rounded-lg overflow-hidden">
                     <Image
-                      src={`/api/images/${selectedRegistration.photoKey}`}
+                      src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`}
                       alt="Passport Photo"
                       fill
                       className="object-cover"
@@ -337,7 +337,7 @@ export default function RegistrationsPage() {
                   <h3 className="font-semibold">Aadhar Card</h3>
                   <div className="mt-2 relative w-32 h-40 border rounded-lg overflow-hidden">
                     <Image
-                      src={`/api/images/${selectedRegistration.aadharKey}`}
+                      src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`}
                       alt="Aadhar Card"
                       fill
                       className="object-cover"
