@@ -14,9 +14,10 @@ interface TimeLeft {
 interface CountdownTimerProps {
     targetDate: Date;
     onCountdownComplete: () => void;
+    showCard?: boolean;
 }
 
-export function CountdownTimer({ targetDate, onCountdownComplete }: CountdownTimerProps) {
+export function CountdownTimer({ targetDate, onCountdownComplete, showCard = true }: CountdownTimerProps) {
     const [timeLeft, setTimeLeft] = useState<TimeLeft>({
         days: 0,
         hours: 0,
@@ -93,9 +94,34 @@ export function CountdownTimer({ targetDate, onCountdownComplete }: CountdownTim
             transition={{ duration: 0.5 }}
             className="w-full max-w-4xl mx-auto px-4"
         >
-            <Card className="bg-white/90 shadow-lg border-2 border-primary/20">
-                <CardHeader className="space-y-4">
-                    <div className="text-center text-sm md:text-base text-gray-700 bg-primary/5 p-4 rounded-lg border border-primary/10">
+            {showCard ? (
+                <Card className="bg-white/90 shadow-lg border-2 border-primary/20">
+                    <CardHeader className="space-y-4">
+                        <div className="text-center text-sm md:text-base text-gray-700 bg-primary/5 p-4 rounded-lg border border-primary/10">
+                            <p className="font-medium">Registration will begin on {targetDate.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}</p>
+                        </div>
+                        <CardTitle className="text-center text-xl md:text-2xl font-bold text-primary">
+                            Time Remaining
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-wrap justify-center gap-6 md:gap-8">
+                            <TimeBlock value={timeLeft.days} label="दिन / Days" max={365} />
+                            <TimeBlock value={timeLeft.hours} label="घंटे / Hours" max={24} />
+                            <TimeBlock value={timeLeft.minutes} label="मिनट / Minutes" max={60} />
+                            <TimeBlock value={timeLeft.seconds} label="सेकंड / Seconds" max={60} />
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : (
+                <>
+                    <div className="text-center text-sm md:text-base text-gray-700 bg-primary/5 p-4 mb-4 rounded-lg border border-primary/10">
                         <p className="font-medium">Registration will begin on {targetDate.toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
@@ -104,19 +130,17 @@ export function CountdownTimer({ targetDate, onCountdownComplete }: CountdownTim
                             minute: '2-digit'
                         })}</p>
                     </div>
-                    <CardTitle className="text-center text-xl md:text-2xl font-bold text-primary">
+                    <div className="text-center text-xl mb-4 md:text-2xl font-bold text-primary">
                         Time Remaining
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
+                    </div>
                     <div className="flex flex-wrap justify-center gap-6 md:gap-8">
                         <TimeBlock value={timeLeft.days} label="दिन / Days" max={365} />
                         <TimeBlock value={timeLeft.hours} label="घंटे / Hours" max={24} />
                         <TimeBlock value={timeLeft.minutes} label="मिनट / Minutes" max={60} />
                         <TimeBlock value={timeLeft.seconds} label="सेकंड / Seconds" max={60} />
                     </div>
-                </CardContent>
-            </Card>
+                </>
+            )}
         </motion.div>
     );
 } 

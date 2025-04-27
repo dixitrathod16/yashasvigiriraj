@@ -9,6 +9,10 @@
 # testing
 /coverage
 
+/finalImages
+/newFinalImages
+/finalImages*
+
 # next.js
 /.next/
 /out/

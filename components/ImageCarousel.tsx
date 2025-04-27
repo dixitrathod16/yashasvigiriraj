@@ -76,7 +76,7 @@ export function ImageCarousel() {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const response = await fetch('/api/images');
+        const response = await fetch('/api/s3-images');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
