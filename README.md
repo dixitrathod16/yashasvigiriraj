@@ -64,6 +64,10 @@ GOOGLE_API_KEY=<Replace with your_google_api_key>
 API_SECRET_KEY=<Replace with your newly generated jwt_secret_key>
 ADMIN_SECRET_KEY=<Replace with the password you want to use to login to admin dashboard>
 NEXT_PUBLIC_SITE_URL=<http://localhost:3000 in local or your custom domain in production>
+NEXT_DEVELOPMENT_SITE_URL=<http://localhost:3000 in local or your custom domain in production>
+S3_BUCKET_NAME=<Replace with your bucket name>
+CLOUDFRONT_DOMAIN=<Replace with your cloudfront domain name>
+NEXT_PUBLIC_REGISTRATION_START_DATE=<Replace here with registration lauch date>
 ```
 
 5. Run the development server:
