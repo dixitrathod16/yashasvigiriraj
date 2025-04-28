@@ -1745,7 +1745,6 @@ export default function RegisterPage() {
                                 name="photo"
                                 type="file"
                                 accept="image/jpeg,image/png,image/jpg,image/webp,image/heic,image/heif"
-                                capture="environment"
                                 onChange={handlePhotoChange}
                                 className="hidden"
                                 key={`photo-${photoInputKey}`}
@@ -1805,7 +1804,6 @@ export default function RegisterPage() {
                                 name="aadharCard"
                                 type="file"
                                 accept="image/jpeg,image/png,image/jpg,image/webp,image/heic,image/heif"
-                                capture="environment"
                                 onChange={handleAadharChange}
                                 className="hidden"
                                 key={`aadhar-${aadharInputKey}`}
