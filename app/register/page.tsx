@@ -1475,7 +1475,7 @@ export default function RegisterPage() {
                       <Input
                         id="guardianName"
                         name="guardianName"
-                        placeholder="पिता/पति का नाम"
+                        placeholder="पिता / पति का नाम"
                         required
                         onChange={handleInputChange}
                         onKeyDown={handleNameInput}
@@ -1534,7 +1534,7 @@ export default function RegisterPage() {
                           name="pinCode"
                           maxLength={6}
                           onKeyDown={handleNumericInput}
-                          placeholder="Pin Code"
+                          placeholder="पिन कोड / Pin Code"
                           required
                           onChange={handleInputChange}
                           className={formErrors.pinCode ? "border-red-500" : ""}
