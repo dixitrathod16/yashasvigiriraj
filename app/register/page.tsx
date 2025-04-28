@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { RegistrationNavigation } from '@/components/RegistrationNavigation';
 import { Footer } from '@/components/Footer';
 import Image from 'next/image';
@@ -15,9 +15,21 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
+import heic2any from 'heic2any';
 
 // Categories data
-const categories = [
+interface Category {
+  id: 'SAN' | 'CHA' | 'NAV';
+  titleHindi: string;
+  titleEnglish: string;
+  description: string;
+  date: string;
+  previousYatraMessage: string;
+  bottomText: string;
+}
+
+const categories: Category[] = [
   {
     id: 'SAN',
     titleHindi: 'संपूर्ण संघ',
@@ -172,17 +184,289 @@ interface UploadUrlResponse {
 }
 
 // Get registration start date from environment variable
-const registrationStartDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_START_DATE || '2025-04-30T00:00:00');
+const REGISTRATION_DATE_FALLBACK = '2025-04-30T00:00:00';
+const registrationStartDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_START_DATE || REGISTRATION_DATE_FALLBACK);
+const isUsingFallbackDate = !process.env.NEXT_PUBLIC_REGISTRATION_START_DATE;
 
 // Full-screen loader overlay
 const FullScreenLoader = () => (
   <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/40">
     <div className="flex flex-col items-center gap-4 p-8 bg-white/90 rounded-xl shadow-lg">
       <Loader2 className="animate-spin w-12 h-12 text-primary" />
-      <span className="text-lg font-semibold text-primary">प्रस्तुत कर रहा है... / Submitting...</span>
+      <span className="text-lg font-semibold text-primary">Submitting...</span>
     </div>
   </div>
 );
+
+// Utility function for image validation, conversion, and compression
+async function processImageFile({
+  file,
+  setPreview,
+  setFile,
+  setError,
+  fieldName
+}: {
+  file: File | null,
+  setPreview: (url: string | null) => void,
+  setFile: (file: File | null) => void,
+  setError: (cb: (prev: Record<string, string | undefined>) => Record<string, string | undefined>) => void,
+  fieldName: 'photo' | 'aadharCard',
+}) {
+  if (!file) {
+    setPreview(null);
+    setFile(null);
+    setError(prev => ({ ...prev, [fieldName]: undefined }));
+    return;
+  }
+
+  let fileType = file.type.toLowerCase();
+  let workingFile = file;
+
+  // HEIC/HEIF conversion
+  if (fileType === 'image/heic' || fileType === 'image/heif') {
+    try {
+      const convertedBlob = await heic2any({
+        blob: file,
+        toType: 'image/webp',
+        quality: 0.85,
+      });
+      const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+      workingFile = new File(
+        [blob],
+        file.name.replace(/\.(heic|heif)$/i, '.webp'),
+        { type: 'image/webp' }
+      );
+      fileType = 'image/webp';
+    } catch {
+      setError(prev => ({
+        ...prev,
+        [fieldName]: 'Could not convert HEIC/HEIF image. Please convert your image to JPG, PNG, or WEBP and try again.'
+      }));
+      setPreview(null);
+      setFile(null);
+      return;
+    }
+  }
+
+  // Validate file type
+  if (!['image/jpeg', 'image/png', 'image/jpg', 'image/webp'].includes(fileType)) {
+    setError(prev => ({
+      ...prev,
+      [fieldName]: 'Please upload a valid image file (JPG, PNG, WEBP)'
+    }));
+    setPreview(null);
+    setFile(null);
+    return;
+  }
+
+  // Validate file size (limit to 7MB for initial selection, compress to webp under 7MB)
+  if (workingFile.size > 7 * 1024 * 1024) {
+    setError(prev => ({
+      ...prev,
+      [fieldName]: 'File size should be less than 7MB before compression'
+    }));
+    setPreview(null);
+    setFile(null);
+    return;
+  }
+
+  // Compress and convert the image to webp
+  try {
+    const initialQuality = workingFile.size < 2 * 1024 * 1024 ? 0.95 : 0.85;
+    const options = {
+      maxSizeMB: 4,
+      maxWidthOrHeight: 1800,
+      useWebWorker: true,
+      initialQuality,
+      fileType: 'image/webp',
+    };
+    const compressedFile = await imageCompression(workingFile, options);
+    if (compressedFile.size > 6 * 1024 * 1024) {
+      setError(prev => ({
+        ...prev,
+        [fieldName]: `Compressed ${fieldName === 'photo' ? 'photo' : 'Aadhar card'} is still larger than 7MB. Please choose a smaller image.`
+      }));
+      setPreview(null);
+      setFile(null);
+      return;
+    }
+    setError(prev => ({ ...prev, [fieldName]: undefined }));
+    setFile(compressedFile);
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) {
+        setPreview(reader.result as string);
+      }
+    };
+    reader.onerror = () => {
+      setError(prev => ({
+        ...prev,
+        [fieldName]: 'Error reading the file'
+      }));
+      setPreview(null);
+      setFile(null);
+    };
+    reader.readAsDataURL(compressedFile);
+  } catch {
+    setError(prev => ({
+      ...prev,
+      [fieldName]: 'Error compressing the image'
+    }));
+    setPreview(null);
+    setFile(null);
+  }
+}
+
+const CategorySelection = React.memo(function CategorySelection({ categories, handleCategorySelect }: { categories: Category[], handleCategorySelect: (id: 'SAN' | 'CHA' | 'NAV') => void }) {
+  return (
+    <motion.section
+      className="flex flex-col items-center"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <h1 className="text-3xl font-bold text-center mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary leading-relaxed py-2">
+        पंजीकरण / Registration
+      </h1>
+      <p className="text-lg text-gray-700 text-center mb-10">
+        कृपया अपना पंजीकरण श्रेणी चुनें / Please select your registration category
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+        {categories.map((category: Category) => (
+          <motion.div
+            key={category.id}
+            whileHover={{ scale: 1.03 }}
+            className="cursor-pointer"
+            onClick={() => handleCategorySelect(category.id)}
+          >
+            <Card className="h-full hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-center">
+                  <span className="block text-3xl font-bold text-primary mb-2">{category.titleHindi}</span>
+                  <span className="block text-base">{category.titleEnglish}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-center text-base">
+                  <span className="block font-medium text-gray-800">{category.description}</span>
+                  <span className="block mt-2 text-gray-600">{category.date}</span>
+                </CardDescription>
+              </CardContent>
+              <CardFooter className="flex justify-center">
+                <Button>चुनें / Select</Button>
+              </CardFooter>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+    </motion.section>
+  );
+});
+
+// Rules Step
+const RulesStep = React.memo(function RulesStep({ formType, bottomText, agreedToRules, setAgreedToRules, handleNewRegistration, handleProceedFromRules }: {
+  formType: 'SAN' | 'CHA' | 'NAV',
+  bottomText: string | null,
+  agreedToRules: boolean,
+  setAgreedToRules: (v: boolean) => void,
+  handleNewRegistration: () => void,
+  handleProceedFromRules: () => void
+}) {
+  return (
+    <motion.section
+      className="flex flex-col items-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="w-full max-w-5xl bg-white/90 p-8 rounded-lg shadow-lg space-y-6">
+        <div className="w-full max-w-6xl mb-4 flex justify-start">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleNewRegistration}
+            className="flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
+              <path d="m12 19-7-7 7-7" />
+              <path d="M19 12H5" />
+            </svg>
+            वापस / Back
+          </Button>
+        </div>
+        <h2 className="text-2xl font-bold text-center text-primary mb-4">नियम / Rules</h2>
+        <div className="prose max-w-none text-gray-800 text-lg leading-relaxed">
+          {formType === 'NAV' ? <NavanuRules /> : <CharipalithRules />}
+          <div className="border-t pt-6">
+            <div className="flex items-start gap-3 w-full">
+              <Checkbox id="agree-rules" checked={agreedToRules} onCheckedChange={(checked) => setAgreedToRules(checked === true)} className="mt-1" />
+              <Label htmlFor="agree-rules" className="text-base font-medium cursor-pointer select-none w-full">
+                {bottomText}
+              </Label>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
+          <Button
+            variant="outline"
+            onClick={handleNewRegistration}
+            className="w-[200px]"
+          >
+            वापस / Back
+          </Button>
+          <Button onClick={handleProceedFromRules} disabled={!agreedToRules} className="w-[200px]">
+            आगे बढ़ें / Continue
+          </Button>
+        </div>
+      </div>
+    </motion.section>
+  );
+});
+
+// Registration Form Step
+const RegistrationForm = React.memo(function RegistrationForm(props: React.PropsWithChildren<object>) {
+  // All props and handlers are passed through
+  return (
+    <motion.section
+      className="flex flex-col items-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* The original form JSX goes here, using props for all state/handlers */}
+      {props.children}
+    </motion.section>
+  );
+});
+
+// Review Step
+const ReviewStep = React.memo(function ReviewStep(props: React.PropsWithChildren<object>) {
+  return (
+    <motion.section
+      className="flex flex-col items-center"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {props.children}
+    </motion.section>
+  );
+});
+
+// Success Step
+const SuccessStep = React.memo(function SuccessStep(props: React.PropsWithChildren<object>) {
+  return (
+    <motion.section
+      className="flex flex-col items-center"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {props.children}
+    </motion.section>
+  );
+});
 
 export default function RegisterPage() {
   // States for the form
@@ -368,123 +652,27 @@ export default function RegisterPage() {
   };
 
   // Handler for photo upload
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setPhotoPreview(null);
-      setPhotoFile(null);
-      setFormData(prev => ({ ...prev, photo: null }));
-      return;
-    }
-
-    // Validate file type
-    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-      setFormErrors(prev => ({
-        ...prev,
-        photo: 'Please upload a valid image file (JPG, PNG)'
-      }));
-      setPhotoPreview(null);
-      setPhotoFile(null);
-      setFormData(prev => ({ ...prev, photo: null }));
-      return;
-    }
-
-    // Validate file size (6MB limit)
-    if (file.size > 6 * 1024 * 1024) {
-      setFormErrors(prev => ({
-        ...prev,
-        photo: 'File size should be less than 6MB'
-      }));
-      setPhotoPreview(null);
-      setPhotoFile(null);
-      setFormData(prev => ({ ...prev, photo: null }));
-      return;
-    }
-
-    // Clear any existing errors
-    setFormErrors(prev => ({ ...prev, photo: undefined }));
-
-    // Set the file state
-    setPhotoFile(file);
-    setFormData(prev => ({ ...prev, photo: file }));
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result) {
-        setPhotoPreview(reader.result as string);
-      }
-    };
-    reader.onerror = () => {
-      setFormErrors(prev => ({
-        ...prev,
-        photo: 'Error reading the file'
-      }));
-      setPhotoPreview(null);
-      setPhotoFile(null);
-      setFormData(prev => ({ ...prev, photo: null }));
-    };
-    reader.readAsDataURL(file);
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    await processImageFile({
+      file,
+      setPreview: setPhotoPreview,
+      setFile: setPhotoFile,
+      setError: setFormErrors,
+      fieldName: 'photo',
+    });
   };
 
   // Handler for Aadhar card upload
-  const handleAadharChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setAadharPreview(null);
-      setAadharFile(null);
-      setFormData(prev => ({ ...prev, aadharCard: null }));
-      return;
-    }
-
-    // Validate file type
-    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-      setFormErrors(prev => ({
-        ...prev,
-        aadharCard: 'Please upload a valid image file (JPG, PNG)'
-      }));
-      setAadharPreview(null);
-      setAadharFile(null);
-      setFormData(prev => ({ ...prev, aadharCard: null }));
-      return;
-    }
-
-    // Validate file size (6MB limit)
-    if (file.size > 6 * 1024 * 1024) {
-      setFormErrors(prev => ({
-        ...prev,
-        aadharCard: 'File size should be less than 6MB'
-      }));
-      setAadharPreview(null);
-      setAadharFile(null);
-      setFormData(prev => ({ ...prev, aadharCard: null }));
-      return;
-    }
-
-    // Clear any existing errors
-    setFormErrors(prev => ({ ...prev, aadharCard: undefined }));
-
-    // Set the file state
-    setAadharFile(file);
-    setFormData(prev => ({ ...prev, aadharCard: file }));
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result) {
-        setAadharPreview(reader.result as string);
-      }
-    };
-    reader.onerror = () => {
-      setFormErrors(prev => ({
-        ...prev,
-        aadharCard: 'Error reading the file'
-      }));
-      setAadharPreview(null);
-      setAadharFile(null);
-      setFormData(prev => ({ ...prev, aadharCard: null }));
-    };
-    reader.readAsDataURL(file);
+  const handleAadharChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    await processImageFile({
+      file,
+      setPreview: setAadharPreview,
+      setFile: setAadharFile,
+      setError: setFormErrors,
+      fieldName: 'aadharCard',
+    });
   };
 
   // Handler for clearing photo
@@ -589,19 +777,29 @@ export default function RegisterPage() {
     // Validate photo
     if (!photoFile) {
       errors.photo = "पासपोर्ट फोटो आवश्यक है / Passport photo is required";
-    } else if (photoFile.size > 6 * 1024 * 1024) { // 6MB limit
-      errors.photo = "फोटो 6MB से कम होना चाहिए / Photo should be less than 6MB";
-    } else if (!['image/jpeg', 'image/png', 'image/jpg'].includes(photoFile.type)) {
-      errors.photo = "फोटो JPG या PNG फॉर्मेट में होना चाहिए / Photo should be in JPG or PNG format";
+    } else if (photoFile.size > 7 * 1024 * 1024) { // 7MB limit
+      errors.photo = "फोटो 7MB से कम होना चाहिए (WEBP) / Photo should be less than 7MB (WEBP)";
+    } else if (
+      photoFile.type &&
+      (photoFile.type.toLowerCase() === 'image/heic' || photoFile.type.toLowerCase() === 'image/heif')
+    ) {
+      errors.photo = "HEIC/HEIF इमेज सपोर्टेड नहीं है। कृपया JPG, PNG या WEBP में बदलें / HEIC/HEIF images are not supported. Please convert to JPG, PNG, or WEBP.";
+    } else if (!['image/jpeg', 'image/png', 'image/jpg', 'image/webp'].includes(photoFile.type.toLowerCase())) {
+      errors.photo = "फोटो JPG, PNG या WEBP फॉर्मेट में होना चाहिए / Photo should be in JPG, PNG, or WEBP format";
     }
 
     // Validate Aadhar card
     if (!aadharFile) {
       errors.aadharCard = "आधार कार्ड आवश्यक है / Aadhar card is required";
-    } else if (aadharFile.size > 6 * 1024 * 1024) { // 6MB limit
-      errors.aadharCard = "आधार कार्ड 6MB से कम होना चाहिए / Aadhar card should be less than 6MB";
-    } else if (!['image/jpeg', 'image/png', 'image/jpg'].includes(aadharFile.type)) {
-      errors.aadharCard = "आधार कार्ड JPG या PNG फॉर्मेट में होना चाहिए / Aadhar card should be in JPG or PNG format";
+    } else if (aadharFile.size > 7 * 1024 * 1024) { // 7MB limit
+      errors.aadharCard = "आधार कार्ड 7MB से कम होना चाहिए (WEBP) / Aadhar card should be less than 7MB (WEBP)";
+    } else if (
+      aadharFile.type &&
+      (aadharFile.type.toLowerCase() === 'image/heic' || aadharFile.type.toLowerCase() === 'image/heif')
+    ) {
+      errors.aadharCard = "HEIC/HEIF इमेज सपोर्टेड नहीं है। कृपया JPG, PNG या WEBP में बदलें / HEIC/HEIF images are not supported. Please convert to JPG, PNG, or WEBP.";
+    } else if (!['image/jpeg', 'image/png', 'image/jpg', 'image/webp'].includes(aadharFile.type.toLowerCase())) {
+      errors.aadharCard = "आधार कार्ड JPG, PNG या WEBP फॉर्मेट में होना चाहिए / Aadhar card should be in JPG, PNG, or WEBP format";
     }
 
     setFormErrors(errors);
@@ -1084,8 +1282,19 @@ export default function RegisterPage() {
     setAgreedToRules(false); // Reset checkbox
   };
 
+  // Memoize handlers that are passed as props
+  const memoizedHandleCategorySelect = useCallback(handleCategorySelect, []);
+  const memoizedHandleNewRegistration = useCallback(() => handleNewRegistration(), []);
+  const memoizedHandleProceedFromRules = useCallback(handleProceedFromRules, [agreedToRules]);
+
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Show warning if using fallback registration date */}
+      {isUsingFallbackDate && (
+        <div className="bg-yellow-200 text-yellow-900 border border-yellow-400 px-4 py-2 rounded mb-4 text-center font-semibold">
+          Warning: Using fallback registration start date ({REGISTRATION_DATE_FALLBACK}). Set NEXT_PUBLIC_REGISTRATION_START_DATE in your environment for production.
+        </div>
+      )}
       {loading && <FullScreenLoader />}
       <RegistrationNavigation />
       <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-20">
@@ -1126,109 +1335,23 @@ export default function RegisterPage() {
           ) : (
             <>
               {step === 'categories' && (
-                <motion.section
-                  className="flex flex-col items-center"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <h1 className="text-3xl font-bold text-center mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary leading-relaxed py-2">
-                    पंजीकरण / Registration
-                  </h1>
-                  <p className="text-lg text-gray-700 text-center mb-10">
-                    कृपया अपना पंजीकरण श्रेणी चुनें / Please select your registration category
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
-                    {categories.map((category) => (
-                      <motion.div
-                        key={category.id}
-                        whileHover={{ scale: 1.03 }}
-                        className="cursor-pointer"
-                        onClick={() => handleCategorySelect(category.id as 'SAN' | 'CHA' | 'NAV')}
-                      >
-                        <Card className="h-full hover:shadow-lg transition-shadow">
-                          <CardHeader>
-                            <CardTitle className="text-center">
-                              <span className="block text-3xl font-bold text-primary mb-2">{category.titleHindi}</span>
-                              <span className="block text-base">{category.titleEnglish}</span>
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <CardDescription className="text-center text-base">
-                              <span className="block font-medium text-gray-800">{category.description}</span>
-                              <span className="block mt-2 text-gray-600">{category.date}</span>
-                            </CardDescription>
-                          </CardContent>
-                          <CardFooter className="flex justify-center">
-                            <Button>चुनें / Select</Button>
-                          </CardFooter>
-                        </Card>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.section>
+                <CategorySelection
+                  categories={categories}
+                  handleCategorySelect={memoizedHandleCategorySelect}
+                />
               )}
-
               {step === 'rules' && formType && (
-                <motion.section
-                  className="flex flex-col items-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <div className="w-full max-w-5xl bg-white/90 p-8 rounded-lg shadow-lg space-y-6">
-                    {/* Add this block for the top back button */}
-                    <div className="w-full max-w-6xl mb-4 flex justify-start">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => handleNewRegistration()}
-                        className="flex items-center gap-2"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
-                          <path d="m12 19-7-7 7-7" />
-                          <path d="M19 12H5" />
-                        </svg>
-                        वापस / Back
-                      </Button>
-                    </div>
-                    <h2 className="text-2xl font-bold text-center text-primary mb-4">नियम / Rules</h2>
-                    <div className="prose max-w-none text-gray-800 text-lg leading-relaxed">
-                      {formType === 'NAV' ? <NavanuRules /> : <CharipalithRules />}
-
-                      <div className="border-t pt-6">
-                        <div className="flex items-start gap-3 w-full">
-                          <Checkbox id="agree-rules" checked={agreedToRules} onCheckedChange={(checked) => setAgreedToRules(checked === true)} className="mt-1" />
-                          <Label htmlFor="agree-rules" className="text-base font-medium cursor-pointer select-none w-full">
-                            {bottomText}
-                          </Label>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={() => handleNewRegistration()}
-                        className="w-[200px]"
-                      >
-                        वापस / Back
-                      </Button>
-                      <Button onClick={handleProceedFromRules} disabled={!agreedToRules} className="w-[200px]">
-                        आगे बढ़ें / Continue
-                      </Button>
-                    </div>
-                  </div>
-                </motion.section>
+                <RulesStep
+                  formType={formType}
+                  bottomText={bottomText}
+                  agreedToRules={agreedToRules}
+                  setAgreedToRules={setAgreedToRules}
+                  handleNewRegistration={memoizedHandleNewRegistration}
+                  handleProceedFromRules={memoizedHandleProceedFromRules}
+                />
               )}
-
               {step === 'form' && formType && (
-                <motion.section
-                  className="flex flex-col items-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
+                <RegistrationForm>
                   <form onSubmit={handleSubmit} className="w-full max-w-5xl space-y-8 bg-white/90 p-8 rounded-lg shadow-lg">
                     <div className="w-full max-w-6xl mb-4 flex justify-start">
                       <Button
@@ -1589,7 +1712,7 @@ export default function RegisterPage() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span className="text-xs text-gray-500">Click to upload</span>
-                                    <span className="text-[10px] text-gray-400">JPG, PNG (max. 6MB)</span>
+                                    <span className="text-[10px] text-gray-400">JPG, PNG, WEBP, or iPhone images (HEIC/HEIF) (max. 7MB)</span>
                                   </div>
                                 </label>
                               )}
@@ -1597,7 +1720,8 @@ export default function RegisterPage() {
                                 id="photo"
                                 name="photo"
                                 type="file"
-                                accept="image/jpeg,image/png,image/jpg"
+                                accept="image/jpeg,image/png,image/jpg,image/webp,image/heic,image/heif"
+                                capture="environment"
                                 onChange={handlePhotoChange}
                                 className="hidden"
                                 key={`photo-${photoInputKey}`}
@@ -1648,7 +1772,7 @@ export default function RegisterPage() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span className="text-xs text-gray-500">Click to upload</span>
-                                    <span className="text-[10px] text-gray-400">JPG, PNG (max. 6MB)</span>
+                                    <span className="text-[10px] text-gray-400">JPG, PNG, WEBP, or iPhone images (HEIC/HEIF) (max. 7MB)</span>
                                   </div>
                                 </label>
                               )}
@@ -1656,7 +1780,8 @@ export default function RegisterPage() {
                                 id="aadharCard"
                                 name="aadharCard"
                                 type="file"
-                                accept="image/jpeg,image/png,image/jpg"
+                                accept="image/jpeg,image/png,image/jpg,image/webp,image/heic,image/heif"
+                                capture="environment"
                                 onChange={handleAadharChange}
                                 className="hidden"
                                 key={`aadhar-${aadharInputKey}`}
@@ -1674,12 +1799,6 @@ export default function RegisterPage() {
                         </div>
                       </div>
                     </div>
-
-                    {/* <div className="border-t pt-6">
-                      <p className="text-base font-medium text-gray-800 text-center">
-                        {bottomText}
-                      </p>
-                    </div> */}
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
                       <Button
@@ -1699,16 +1818,10 @@ export default function RegisterPage() {
                       </Button>
                     </div>
                   </form>
-                </motion.section>
+                </RegistrationForm>
               )}
-
               {step === 'review' && (
-                <motion.section
-                  className="flex flex-col items-center"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
+                <ReviewStep>
                   <form className="w-full max-w-5xl space-y-8 bg-white/90 p-8 rounded-lg shadow-lg">
                     <div className="w-full max-w-6xl mb-4 flex justify-start">
                       <Button
@@ -1908,16 +2021,10 @@ export default function RegisterPage() {
                       </Button>
                     </div>
                   </form>
-                </motion.section>
+                </ReviewStep>
               )}
-
               {step === 'success' && (
-                <motion.section
-                  className="flex flex-col items-center"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
+                <SuccessStep>
                   <div className="bg-white/90 p-8 rounded-lg shadow-lg max-w-4xl w-full text-center space-y-6">
                     <div className="flex justify-center">
                       <div className="relative w-24 h-24">
@@ -1963,7 +2070,7 @@ export default function RegisterPage() {
                       </Button>
                     </div>
                   </div>
-                </motion.section>
+                </SuccessStep>
               )}
             </>
           )}
