@@ -1552,7 +1552,7 @@ export default function RegisterPage() {
                         <Input
                           id="village"
                           name="village"
-                          placeholder="गाँव / Village"
+                          placeholder="राजस्थान में गाँव / Village in Rajasthan"
                           required
                           onChange={handleInputChange}
                           className={formErrors.village ? "border-red-500" : ""}
