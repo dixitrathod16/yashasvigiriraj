@@ -24,14 +24,14 @@ const categories = [
     titleHindi: 'छःरिपालित संघ',
     titleEnglish: 'CHARIPALITH SANGH',
     description: 'Ayodhyapuram to Shatrunjay Maha Tirth',
-    date: '02/11/2025 - 07/12/2025',
+    date: '02/12/2025 - 07/12/2025',
   },
   {
     id: 'NAV',
     titleHindi: 'नवाणु',
     titleEnglish: 'NAVANU',
     description: 'Shatrunjay Maha Tirth',
-    date: '07/11/2025 - 14/01/2026',
+    date: '07/12/2025 - 14/01/2026',
   }
 ];
 

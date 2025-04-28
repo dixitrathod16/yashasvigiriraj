@@ -137,10 +137,10 @@ export default function RegistrationsPage() {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
@@ -171,7 +171,7 @@ export default function RegistrationsPage() {
       });
 
       if (!response.ok) throw new Error('Failed to update status');
-      
+
       toast.success(`Registration ${newStatus.toLowerCase()} successfully`);
       fetchRegistrations();
     } catch (error) {
@@ -306,11 +306,10 @@ export default function RegistrationsPage() {
               <h3 className="font-semibold">{reg.fullName}</h3>
               <p className="text-sm text-gray-500">{reg.phoneNumber}</p>
             </div>
-            <span className={`text-sm ${
-              reg.status === 'APPROVED' ? 'text-green-600' :
-              reg.status === 'REJECTED' ? 'text-red-600' :
-              'text-yellow-600'
-            }`}>
+            <span className={`text-sm ${reg.status === 'APPROVED' ? 'text-green-600' :
+                reg.status === 'REJECTED' ? 'text-red-600' :
+                  'text-yellow-600'
+              }`}>
               {reg.status}
             </span>
           </div>
@@ -384,8 +383,8 @@ export default function RegistrationsPage() {
                 <TableCell>
                   <span className={
                     reg.status === 'APPROVED' ? 'text-green-600' :
-                    reg.status === 'REJECTED' ? 'text-red-600' :
-                    'text-yellow-600'
+                      reg.status === 'REJECTED' ? 'text-red-600' :
+                        'text-yellow-600'
                   }>
                     {reg.status}
                   </span>

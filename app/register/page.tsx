@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2 } from 'lucide-react';
 
 // Categories data
 const categories = [
@@ -31,7 +32,7 @@ const categories = [
     titleHindi: 'छःरिपालित संघ',
     titleEnglish: 'CHARIPALITH SANGH',
     description: 'Ayodhyapuram to Shatrunjay Maha Tirth',
-    date: '02/11/2025 - 07/12/2025',
+    date: '02/12/2025 - 07/12/2025',
     previousYatraMessage: 'आपने पहले भी कभी छःरि पालित संघ यात्रा की है',
     bottomText: 'मैं निश्रा दाता पूज्य गुरुभगवंत की आज्ञा अनुसार एवं व्यवस्थापकों को सहयोग देकर छःरि पालित संघ के नियमों का पालन करूँगा / करूँगी। अतः आप मेरा प्रवेश पत्र स्वीकृत करें।',
   },
@@ -40,7 +41,7 @@ const categories = [
     titleHindi: 'नवाणु',
     titleEnglish: 'NAVANU',
     description: 'Shatrunjay Maha Tirth',
-    date: '07/11/2025 - 14/01/2026',
+    date: '07/12/2025 - 14/01/2026',
     previousYatraMessage: 'आपने पहले भी कभी नव्वाणु यात्रा की है',
     bottomText: 'मैं निश्रा दाता पूज्य गुरुभगवंत की आज्ञा अनुसार एवं व्यवस्थापकों को सहयोग देकर नवाणु के नियमों का पालन करूँगा / करूँगी। अतः आप मेरा प्रवेश पत्र स्वीकृत करें।',
   }
@@ -173,6 +174,16 @@ interface UploadUrlResponse {
 // Get registration start date from environment variable
 const registrationStartDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_START_DATE || '2025-04-30T00:00:00');
 
+// Full-screen loader overlay
+const FullScreenLoader = () => (
+  <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/40">
+    <div className="flex flex-col items-center gap-4 p-8 bg-white/90 rounded-xl shadow-lg">
+      <Loader2 className="animate-spin w-12 h-12 text-primary" />
+      <span className="text-lg font-semibold text-primary">प्रस्तुत कर रहा है... / Submitting...</span>
+    </div>
+  </div>
+);
+
 export default function RegisterPage() {
   // States for the form
   const [step, setStep] = useState<'categories' | 'rules' | 'form' | 'review' | 'success'>('categories');
@@ -229,6 +240,7 @@ export default function RegisterPage() {
   const [aadharInputKey, setAadharInputKey] = useState(0);
   const [hasRegistrationStarted, setHasRegistrationStarted] = useState(new Date() >= registrationStartDate);
   const [agreedToRules, setAgreedToRules] = useState(false);
+  const [agreedToReview, setAgreedToReview] = useState(false);
 
   const handleCountdownComplete = () => {
     setHasRegistrationStarted(true);
@@ -377,11 +389,11 @@ export default function RegisterPage() {
       return;
     }
 
-    // Validate file size (4MB limit)
-    if (file.size > 4 * 1024 * 1024) {
+    // Validate file size (6MB limit)
+    if (file.size > 6 * 1024 * 1024) {
       setFormErrors(prev => ({
         ...prev,
-        photo: 'File size should be less than 4MB'
+        photo: 'File size should be less than 6MB'
       }));
       setPhotoPreview(null);
       setPhotoFile(null);
@@ -437,11 +449,11 @@ export default function RegisterPage() {
       return;
     }
 
-    // Validate file size (4MB limit)
-    if (file.size > 4 * 1024 * 1024) {
+    // Validate file size (6MB limit)
+    if (file.size > 6 * 1024 * 1024) {
       setFormErrors(prev => ({
         ...prev,
-        aadharCard: 'File size should be less than 4MB'
+        aadharCard: 'File size should be less than 6MB'
       }));
       setAadharPreview(null);
       setAadharFile(null);
@@ -577,8 +589,8 @@ export default function RegisterPage() {
     // Validate photo
     if (!photoFile) {
       errors.photo = "पासपोर्ट फोटो आवश्यक है / Passport photo is required";
-    } else if (photoFile.size > 4 * 1024 * 1024) { // 4MB limit
-      errors.photo = "फोटो 4MB से कम होना चाहिए / Photo should be less than 4MB";
+    } else if (photoFile.size > 6 * 1024 * 1024) { // 6MB limit
+      errors.photo = "फोटो 6MB से कम होना चाहिए / Photo should be less than 6MB";
     } else if (!['image/jpeg', 'image/png', 'image/jpg'].includes(photoFile.type)) {
       errors.photo = "फोटो JPG या PNG फॉर्मेट में होना चाहिए / Photo should be in JPG or PNG format";
     }
@@ -586,8 +598,8 @@ export default function RegisterPage() {
     // Validate Aadhar card
     if (!aadharFile) {
       errors.aadharCard = "आधार कार्ड आवश्यक है / Aadhar card is required";
-    } else if (aadharFile.size > 4 * 1024 * 1024) { // 4MB limit
-      errors.aadharCard = "आधार कार्ड 4MB से कम होना चाहिए / Aadhar card should be less than 4MB";
+    } else if (aadharFile.size > 6 * 1024 * 1024) { // 6MB limit
+      errors.aadharCard = "आधार कार्ड 6MB से कम होना चाहिए / Aadhar card should be less than 6MB";
     } else if (!['image/jpeg', 'image/png', 'image/jpg'].includes(aadharFile.type)) {
       errors.aadharCard = "आधार कार्ड JPG या PNG फॉर्मेट में होना चाहिए / Aadhar card should be in JPG or PNG format";
     }
@@ -684,10 +696,15 @@ export default function RegisterPage() {
       // Success - show success message
       setRegistrationId(registerData.registrationId);
       setStep('success');
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
 
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Something went wrong';
       setError(errorMessage);
+      setStep('form');
       window.scrollTo({
         top: 0,
         behavior: 'smooth'
@@ -715,7 +732,7 @@ export default function RegisterPage() {
 
     // Reset category and step
     if (!skipStepSetup) {
-      setStep('categories');    
+      setStep('categories');
       setFormType(null);
       setPreviousYatraMessage(null);
       setBottomText(null);
@@ -1049,6 +1066,7 @@ export default function RegisterPage() {
 
     // If validation passes, proceed to review step
     setStep('review');
+    setAgreedToReview(false);
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
@@ -1068,6 +1086,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {loading && <FullScreenLoader />}
       <RegistrationNavigation />
       <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-20">
         <div className="container mx-auto px-4 md:px-10 py-8 md:py-12 space-y-8">
@@ -1570,7 +1589,7 @@ export default function RegisterPage() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span className="text-xs text-gray-500">Click to upload</span>
-                                    <span className="text-[10px] text-gray-400">JPG, PNG (max. 4MB)</span>
+                                    <span className="text-[10px] text-gray-400">JPG, PNG (max. 6MB)</span>
                                   </div>
                                 </label>
                               )}
@@ -1629,7 +1648,7 @@ export default function RegisterPage() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span className="text-xs text-gray-500">Click to upload</span>
-                                    <span className="text-[10px] text-gray-400">JPG, PNG (max. 4MB)</span>
+                                    <span className="text-[10px] text-gray-400">JPG, PNG (max. 6MB)</span>
                                   </div>
                                 </label>
                               )}
@@ -1676,7 +1695,7 @@ export default function RegisterPage() {
                         onClick={handleReview}
                         className="w-[200px]"
                       >
-                        समीक्षा करें / Review
+                        Review and Submit
                       </Button>
                     </div>
                   </form>
@@ -1695,25 +1714,25 @@ export default function RegisterPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleBackToRules}
+                        onClick={handleEdit}
                         className="flex items-center gap-2"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-left">
                           <path d="m12 19-7-7 7-7" />
                           <path d="M19 12H5" />
                         </svg>
-                        वापस / Back
+                        संपादित करें / Edit
                       </Button>
                     </div>
-                    <div className="w-full mb-8">
-                      <Image
-                        src={`/${formType === 'SAN' ? 'Full Sangh' : formType === 'CHA' ? 'Charipalith Sangh' : 'Navanu'} Header.jpg`}
-                        alt={`${categories.find(c => c.id === formType)?.titleHindi} Header`}
-                        width={800}
-                        height={200}
-                        className="w-full rounded-lg object-contain"
-                        priority
-                      />
+
+                    <div className="mb-6">
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-50 border border-yellow-300 text-yellow-800 text-lg font-semibold shadow-sm">
+                        <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
+                        <div className="flex flex-col">
+                          <span>Review your details before submitting. Please verify all information below.</span>
+                          <span className="text-base font-normal text-yellow-900 mt-1">सबमिट करने से पहले कृपया अपनी जानकारी की समीक्षा करें। नीचे दी गई सभी जानकारी की पुष्टि करें।</span>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1856,28 +1875,36 @@ export default function RegisterPage() {
                       </div>
                     </div>
 
-                    <div className="border-t pt-6">
-                      <p className="text-base font-medium text-gray-800 text-center">
-                        {bottomText}
-                      </p>
+                    <div className="w-full mb-2">
+                      <label htmlFor="agree-review" className="flex items-start gap-2 cursor-pointer select-none">
+                        <Checkbox id="agree-review" checked={agreedToReview} onCheckedChange={(checked) => setAgreedToReview(checked === true)} className="mt-1" />
+                        <span className="text-base font-medium">
+                          I confirm that I have carefully reviewed all the details above.<br />
+                          मैंने ऊपर दी गई सभी जानकारी को ध्यानपूर्वक जांच लिया है।
+                        </span>
+                      </label>
                     </div>
-
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
+                    <div className="w-full flex flex-col sm:flex-row gap-4 mt-4">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={handleEdit}
-                        className="w-[200px]"
+                        className="w-full sm:w-[200px]"
                       >
                         संपादित करें / Edit
                       </Button>
                       <Button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={loading}
-                        className="w-[200px]"
+                        disabled={loading || !agreedToReview}
+                        className="w-full sm:w-[200px]"
                       >
-                        {loading ? 'प्रस्तुत कर रहा है... / Submitting...' : 'प्रस्तुत करें / Submit'}
+                        {loading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="animate-spin w-5 h-5" />
+                            प्रस्तुत कर रहा है... / Submitting...
+                          </span>
+                        ) : 'प्रस्तुत करें / Submit'}
                       </Button>
                     </div>
                   </form>
