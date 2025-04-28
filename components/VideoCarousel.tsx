@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -40,8 +40,6 @@ declare global {
   }
 }
 
-let autoplay: NodeJS.Timeout;
-
 export function VideoCarousel() {
   const [state, setState] = useState<VideoState>({
     isLoading: true,
@@ -54,26 +52,37 @@ export function VideoCarousel() {
     duration: 20,
     skipSnaps: false
   })
+  const autoplayRef = useRef<NodeJS.Timeout | null>(null);
+  const ytApiLoadedRef = useRef(false);
 
-  const scrollPrev = React.useCallback(() => {
+  const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev()
   }, [emblaApi])
 
-  const scrollNext = React.useCallback(() => {
+  const scrollNext = useCallback(() => {
     if (emblaApi) emblaApi.scrollNext()
   }, [emblaApi])
 
   // Load YouTube IFrame API
   useEffect(() => {
+    // Prevent multiple API loads
+    if (ytApiLoadedRef.current) return;
+
     const loadYouTubeAPI = async () => {
       return new Promise<void>((resolve) => {
+        if (window.YT) {
+          ytApiLoadedRef.current = true;
+          resolve();
+          return;
+        }
+
         const tag = document.createElement('script');
         tag.src = 'https://www.youtube.com/iframe_api';
         const firstScriptTag = document.getElementsByTagName('script')[0];
         firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
         window.onYouTubeIframeAPIReady = () => {
-          console.log('YouTube API Ready');
+          ytApiLoadedRef.current = true;
           resolve();
         };
       });
@@ -106,26 +115,52 @@ export function VideoCarousel() {
       }
     }
     fetchVideos();
+
+    return () => {
+      // Clean up YouTube API
+      if (window.onYouTubeIframeAPIReady) {
+        window.onYouTubeIframeAPIReady = () => {};
+      }
+    };
   }, []);
 
+  // Handle autoplay
   useEffect(() => {
     if (emblaApi && !isVideoPlaying) {
-      autoplay = setInterval(() => {
-        console.log('Video is not playing, scrolling next');
+      // Clear any existing interval
+      if (autoplayRef.current) {
+        clearInterval(autoplayRef.current);
+      }
+
+      autoplayRef.current = setInterval(() => {
         emblaApi.scrollNext();
-      }, 5000)
+      }, 5000);
 
-      return () => clearInterval(autoplay)
+      return () => {
+        if (autoplayRef.current) {
+          clearInterval(autoplayRef.current);
+          autoplayRef.current = null;
+        }
+      }
+    } else if (autoplayRef.current) {
+      clearInterval(autoplayRef.current);
+      autoplayRef.current = null;
     }
-  }, [emblaApi, isVideoPlaying])
+  }, [emblaApi, isVideoPlaying]);
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (autoplayRef.current) {
+        clearInterval(autoplayRef.current);
+      }
+    };
+  }, []);
 
-  const onPlayerStateChange = (event: { data: number }) => {
+  const onPlayerStateChange = useCallback((event: { data: number }) => {
     // YT.PlayerState.PLAYING === 1
-    if (event.data === 1) {
-      clearInterval(autoplay);
-    }
     setIsVideoPlaying(event.data === 1);
-  };
+  }, []);
 
   const renderContent = () => {
     if (state.isLoading) {
@@ -156,12 +191,18 @@ export function VideoCarousel() {
             className="w-full h-full rounded-lg"
             loading="lazy"
             onLoad={(e) => {
+              if (!window.YT) return;
+              
               const iframe = e.target as HTMLIFrameElement;
-              new window.YT.Player(iframe, {
-                events: {
-                  onStateChange: onPlayerStateChange,
-                },
-              });
+              try {
+                new window.YT.Player(iframe, {
+                  events: {
+                    onStateChange: onPlayerStateChange,
+                  },
+                });
+              } catch (error) {
+                console.error('Error initializing YouTube player:', error);
+              }
             }}
           ></iframe>
         </div>
@@ -173,7 +214,6 @@ export function VideoCarousel() {
     <Card className="w-full p-3 md:p-8 border-2 border-primary/20">
       <CardContent className="px-0 md:p-8 max-w-[1600px] mx-auto w-full">
         <h2 className="text-3xl font-bold text-center mb-8 text-primary decorative-border">
-          {/* गैलरी */}
           वीडियो गैलरी
         </h2>
         <motion.div

@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -58,6 +58,7 @@ export function ImageCarousel() {
     error: null,
     images: []
   })
+  const autoplayRef = useRef<NodeJS.Timeout | null>(null);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
@@ -65,11 +66,11 @@ export function ImageCarousel() {
     skipSnaps: false
   })
 
-  const scrollPrev = React.useCallback(() => {
+  const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev()
   }, [emblaApi])
 
-  const scrollNext = React.useCallback(() => {
+  const scrollNext = useCallback(() => {
     if (emblaApi) emblaApi.scrollNext()
   }, [emblaApi])
 
@@ -102,13 +103,32 @@ export function ImageCarousel() {
 
   useEffect(() => {
     if (emblaApi) {
-      const autoplay = setInterval(() => {
+      // Clear any existing interval
+      if (autoplayRef.current) {
+        clearInterval(autoplayRef.current);
+      }
+
+      autoplayRef.current = setInterval(() => {
         emblaApi.scrollNext()
       }, 5000)
 
-      return () => clearInterval(autoplay)
+      return () => {
+        if (autoplayRef.current) {
+          clearInterval(autoplayRef.current);
+          autoplayRef.current = null;
+        }
+      }
     }
   }, [emblaApi])
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (autoplayRef.current) {
+        clearInterval(autoplayRef.current);
+      }
+    };
+  }, []);
 
   const renderContent = () => {
     if (state.isLoading) {
@@ -141,6 +161,8 @@ export function ImageCarousel() {
             priority={index === 0}
             placeholder="blur"
             blurDataURL={`data:image/svg+xml;base64,${toBase64(shimmer(700, 475))}`}
+            loading={index <= 1 ? "eager" : "lazy"}
+            quality={index === 0 ? 85 : 75}
           />
         </div>
       </div>

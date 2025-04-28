@@ -1,14 +1,55 @@
-import { VideoCarousel } from '@/components/VideoCarousel'
-import { EventDetails } from '@/components/EventDetails'
+import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { HeroSection } from '@/components/HeroSection'
-import { Footer } from '@/components/Footer'
 import { Navigation } from '@/components/Navigation'
-import { RegistrationBanner } from '@/components/RegistrationBanner'
-import { ContactUs } from '@/components/ContactUs'
-import { About } from '@/components/About'
-import { ImageCarousel } from '@/components/ImageCarousel'
-import { JeevithMahotsav } from '@/components/JeevithMahotsav'
+import { Footer } from '@/components/Footer'
 import { Blessings } from '@/components/Blessings'
+import { Skeleton } from '@/components/ui/skeleton'
+
+// Dynamic imports for components that are not needed immediately
+const VideoCarousel = dynamic(() => import('@/components/VideoCarousel').then(mod => ({ default: mod.VideoCarousel })), {
+  loading: () => <CarouselSkeleton title="वीडियो गैलरी" />
+})
+
+const ImageCarousel = dynamic(() => import('@/components/ImageCarousel').then(mod => ({ default: mod.ImageCarousel })), {
+  loading: () => <CarouselSkeleton title="फोटो गैलरी" />
+})
+
+const RegistrationBanner = dynamic(() => import('@/components/RegistrationBanner').then(mod => ({ default: mod.RegistrationBanner })), {
+  loading: () => <SectionSkeleton height="400px" />
+})
+
+const About = dynamic(() => import('@/components/About').then(mod => ({ default: mod.About })), {
+  loading: () => <SectionSkeleton height="300px" />
+})
+
+const JeevithMahotsav = dynamic(() => import('@/components/JeevithMahotsav').then(mod => ({ default: mod.JeevithMahotsav })), {
+  loading: () => <SectionSkeleton height="300px" />
+})
+
+const EventDetails = dynamic(() => import('@/components/EventDetails').then(mod => ({ default: mod.EventDetails })), {
+  loading: () => <SectionSkeleton height="300px" />
+})
+
+const ContactUs = dynamic(() => import('@/components/ContactUs').then(mod => ({ default: mod.ContactUs })), {
+  loading: () => <SectionSkeleton height="200px" />
+})
+
+// Skeleton components for loading states
+const CarouselSkeleton = ({ title }: { title: string }) => (
+  <div className="w-full p-3 md:p-8 border-2 border-primary/20 rounded-lg">
+    <div className="px-0 md:p-8 max-w-[1600px] mx-auto w-full">
+      <h2 className="text-3xl font-bold text-center mb-8 text-primary">{title}</h2>
+      <div className="aspect-video w-full bg-gray-200 animate-pulse rounded-lg"></div>
+    </div>
+  </div>
+)
+
+const SectionSkeleton = ({ height }: { height: string }) => (
+  <div className="w-full rounded-lg overflow-hidden">
+    <Skeleton style={{ height }} className="w-full" />
+  </div>
+)
 
 // This is a Server Component by default
 export default function Home() {
@@ -23,26 +64,47 @@ export default function Home() {
           <section id="blessings">
             <Blessings />
           </section>
+          
           <section id="videos">
-            <VideoCarousel />
+            <Suspense fallback={<CarouselSkeleton title="वीडियो गैलरी" />}>
+              <VideoCarousel />
+            </Suspense>
           </section>
+          
           <section id="images">
-            <ImageCarousel />
+            <Suspense fallback={<CarouselSkeleton title="फोटो गैलरी" />}>
+              <ImageCarousel />
+            </Suspense>
           </section>
+          
           <section id="registration">
-            <RegistrationBanner />
+            <Suspense fallback={<SectionSkeleton height="400px" />}>
+              <RegistrationBanner />
+            </Suspense>
           </section>
+          
           <section id="about-us">
-            <About />
+            <Suspense fallback={<SectionSkeleton height="300px" />}>
+              <About />
+            </Suspense>
           </section>
+          
           <section id="jeevith-mahotsav">
-            <JeevithMahotsav />
+            <Suspense fallback={<SectionSkeleton height="300px" />}>
+              <JeevithMahotsav />
+            </Suspense>
           </section>
+          
           <section id="event-details">
-            <EventDetails />
+            <Suspense fallback={<SectionSkeleton height="300px" />}>
+              <EventDetails />
+            </Suspense>
           </section>
+          
           <section id="contact-us">
-            <ContactUs />
+            <Suspense fallback={<SectionSkeleton height="200px" />}>
+              <ContactUs />
+            </Suspense>
           </section>
         </div>
       </main>

@@ -30,8 +30,10 @@ export function HeroSection() {
             src="/YASHVI LOGO 1 TIFF.webp"
             alt="Yashashvigiriraj Sangh Logo"
             fill
-            style={{ objectFit: 'cover' }}
+            sizes="(max-width: 768px) 300px, 560px"
+            quality={85}
             priority
+            style={{ objectFit: 'contain' }}
           />
         </motion.div>
       </div>
