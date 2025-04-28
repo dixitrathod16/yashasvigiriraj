@@ -54,7 +54,7 @@ export function EventDetails() {
         </div> */}
         <div className="flex justify-center items-center">
           <Image
-            src="/Schedule.jpeg"
+            src="/Schedule Updated.jpeg"
             alt="Yashashvigiriraj Sangh Logo"
             width={1000}
             height={1000}
