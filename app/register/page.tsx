@@ -258,11 +258,11 @@ async function processImageFile({
     return;
   }
 
-  // Validate file size (limit to 7MB for initial selection, compress to webp under 7MB)
-  if (workingFile.size > 7 * 1024 * 1024) {
+  // Validate file size (limit to 10mb for initial selection, compress to webp under 10mb)
+  if (workingFile.size > 10 * 1024 * 1024) {
     setError(prev => ({
       ...prev,
-      [fieldName]: 'File size should be less than 7MB before compression'
+      [fieldName]: 'File size should be less than 10mb before compression'
     }));
     setPreview(null);
     setFile(null);
@@ -284,7 +284,7 @@ async function processImageFile({
     if (compressedFile.size > 6 * 1024 * 1024) {
       setError(prev => ({
         ...prev,
-        [fieldName]: `Compressed ${fieldName === 'photo' ? 'photo' : 'Aadhar card'} is still larger than 7MB. Please choose a smaller image.`
+        [fieldName]: `Compressed ${fieldName === 'photo' ? 'photo' : 'Aadhar card'} is still larger than 10mb. Please choose a smaller image.`
       }));
       setPreview(null);
       setFile(null);
@@ -398,7 +398,7 @@ const RulesStep = React.memo(function RulesStep({ formType, bottomText, agreedTo
         <h2 className="text-2xl font-bold text-center text-primary mb-4">नियम / Rules</h2>
         <div className="prose max-w-none text-gray-800 text-lg leading-relaxed">
           {formType === 'NAV' ? <NavanuRules /> : <CharipalithRules />}
-          <div className="border-t pt-6">
+          <div className="border-t mt-2 pt-6">
             <div className="flex items-start gap-3 w-full">
               <Checkbox id="agree-rules" checked={agreedToRules} onCheckedChange={(checked) => setAgreedToRules(checked === true)} className="mt-1" />
               <Label htmlFor="agree-rules" className="text-base font-medium cursor-pointer select-none w-full">
@@ -779,8 +779,8 @@ export default function RegisterPage() {
     // Validate photo
     if (!photoFile) {
       errors.photo = "पासपोर्ट फोटो आवश्यक है / Passport photo is required";
-    } else if (photoFile.size > 7 * 1024 * 1024) { // 7MB limit
-      errors.photo = "फोटो 7MB से कम होना चाहिए (WEBP) / Photo should be less than 7MB (WEBP)";
+    } else if (photoFile.size > 10 * 1024 * 1024) { // 10mb limit
+      errors.photo = "फोटो 10mb से कम होना चाहिए (WEBP) / Photo should be less than 10mb (WEBP)";
     } else if (
       photoFile.type &&
       (photoFile.type.toLowerCase() === 'image/heic' || photoFile.type.toLowerCase() === 'image/heif')
@@ -793,8 +793,8 @@ export default function RegisterPage() {
     // Validate Aadhar card
     if (!aadharFile) {
       errors.aadharCard = "आधार कार्ड आवश्यक है / Aadhar card is required";
-    } else if (aadharFile.size > 7 * 1024 * 1024) { // 7MB limit
-      errors.aadharCard = "आधार कार्ड 7MB से कम होना चाहिए (WEBP) / Aadhar card should be less than 7MB (WEBP)";
+    } else if (aadharFile.size > 10 * 1024 * 1024) { // 10mb limit
+      errors.aadharCard = "आधार कार्ड 10mb से कम होना चाहिए (WEBP) / Aadhar card should be less than 10mb (WEBP)";
     } else if (
       aadharFile.type &&
       (aadharFile.type.toLowerCase() === 'image/heic' || aadharFile.type.toLowerCase() === 'image/heif')
@@ -1736,7 +1736,7 @@ export default function RegisterPage() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span className="text-xs text-gray-500">Click to upload</span>
-                                    <span className="text-[10px] text-gray-400">JPG, PNG, WEBP, or iPhone images (HEIC/HEIF) (max. 7MB)</span>
+                                    <span className="text-[10px] text-gray-400">JPG, PNG, WEBP, or iPhone images (HEIC/HEIF) (max. 10mb)</span>
                                   </div>
                                 </label>
                               )}
@@ -1795,7 +1795,7 @@ export default function RegisterPage() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span className="text-xs text-gray-500">Click to upload</span>
-                                    <span className="text-[10px] text-gray-400">JPG, PNG, WEBP, or iPhone images (HEIC/HEIF) (max. 7MB)</span>
+                                    <span className="text-[10px] text-gray-400">JPG, PNG, WEBP, or iPhone images (HEIC/HEIF) (max. 10mb)</span>
                                   </div>
                                 </label>
                               )}
@@ -2010,13 +2010,13 @@ export default function RegisterPage() {
                       </div>
                     </div>
 
-                    <div className="w-full mt-6">
-                      <div className="flex items-center gap-3 mb-4">
+                    <div className="border-t mt-2 pt-6">
+                      <div className="flex items-start gap-3 w-full mb-4">
                         <Checkbox
                           id="agree-review"
                           checked={agreedToReview}
                           onCheckedChange={(checked) => setAgreedToReview(checked === true)}
-                          className="shrink-0"
+                          className="mt-1"
                         />
                         <Label htmlFor="agree-review" className="text-base font-medium cursor-pointer select-none w-full">
                           I confirm that I have carefully reviewed all the details above / मैंने ऊपर दी गई सभी जानकारी को ध्यानपूर्वक जांच लिया है।
