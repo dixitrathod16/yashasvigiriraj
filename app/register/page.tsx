@@ -15,8 +15,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
-import imageCompression from 'browser-image-compression';
-import heic2any from 'heic2any';
 
 // Categories data
 interface Category {
@@ -225,6 +223,7 @@ async function processImageFile({
   // HEIC/HEIF conversion
   if (fileType === 'image/heic' || fileType === 'image/heif') {
     try {
+      const heic2any = (await import('heic2any')).default;
       const convertedBlob = await heic2any({
         blob: file,
         toType: 'image/webp',
@@ -272,6 +271,7 @@ async function processImageFile({
 
   // Compress and convert the image to webp
   try {
+    const imageCompression = (await import('browser-image-compression')).default;
     const initialQuality = workingFile.size < 2 * 1024 * 1024 ? 0.95 : 0.85;
     const options = {
       maxSizeMB: 4,
@@ -554,10 +554,12 @@ export default function RegisterPage() {
     setAgreedToRules(false); // Reset checkbox
 
     // Scroll to top of the page
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
   };
 
   // Handler for form input changes
@@ -894,19 +896,23 @@ export default function RegisterPage() {
       // Success - show success message
       setRegistrationId(registerData.registrationId);
       setStep('success');
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      if (typeof window !== 'undefined') {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
 
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Something went wrong';
       setError(errorMessage);
       setStep('form');
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      if (typeof window !== 'undefined') {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -938,10 +944,12 @@ export default function RegisterPage() {
     setAgreedToRules(false); // Reset checkbox
 
     // Scroll to top of the page
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
   };
 
   // Function to generate and download PDF
@@ -955,6 +963,14 @@ export default function RegisterPage() {
       // Create a new div to contain the form content for PDF
       const pdfContent = document.createElement('div');
       pdfContent.classList.add('pdf-container');
+
+      // Build the header image file name and absolute URL
+      const headerFileName = `${formType === 'SAN' ? 'Full Sangh' : formType === 'CHA' ? 'Charipalith Sangh' : 'Navanu'} Header.jpg`;
+      const headerFileNameEncoded = encodeURIComponent(headerFileName);
+      let headerImageUrl = `/${headerFileNameEncoded}`;
+      if (typeof window !== 'undefined') {
+        headerImageUrl = `${window.location.origin}/${headerFileNameEncoded}`;
+      }
 
       // Populate the PDF content with form data and styling
       pdfContent.innerHTML = `
@@ -1029,7 +1045,7 @@ export default function RegisterPage() {
         </style>
         
         <div class="header">
-          <img src="${window.location.origin}/${formType === 'SAN' ? 'Full Sangh' : formType === 'CHA' ? 'Charipalith Sangh' : 'Navanu'} Header.jpg" alt="Form Header">
+          <img src="${headerImageUrl}" alt="Form Header" crossorigin="anonymous">
         </div>
         
         <div class="registration-id">
@@ -1199,10 +1215,12 @@ export default function RegisterPage() {
     setStep('form');
 
     // Scroll to top
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
   };
 
   // Modify the handleReview function to preserve form data
@@ -1254,10 +1272,12 @@ export default function RegisterPage() {
       setError(`कृपया निम्नलिखित फ़ील्ड भरें / Please fill the following fields: ${missingFields.join(', ')}`);
 
       // Scroll to the top of the form
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      if (typeof window !== 'undefined') {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
 
       return;
     }
@@ -1265,14 +1285,18 @@ export default function RegisterPage() {
     // If validation passes, proceed to review step
     setStep('review');
     setAgreedToReview(false);
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
   };
 
   const handleProceedFromRules = () => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
     setStep('form');
   };
 
@@ -1322,7 +1346,7 @@ export default function RegisterPage() {
                       <div className="flex justify-center"> {/* Flex container to center the button */}
                         <Button
                           className="mt-4" // Add margin for spacing
-                          onClick={() => window.open('/', '_self')} // Redirect to home page
+                          onClick={() => { if (typeof window !== 'undefined') window.open('/', '_self'); }} // Redirect to home page
                         >
                           Go Back to Home
                         </Button>
@@ -1988,37 +2012,41 @@ export default function RegisterPage() {
                       </div>
                     </div>
 
-                    <div className="w-full mb-2">
-                      <label htmlFor="agree-review" className="flex items-start gap-2 cursor-pointer select-none">
-                        <Checkbox id="agree-review" checked={agreedToReview} onCheckedChange={(checked) => setAgreedToReview(checked === true)} className="mt-1" />
-                        <span className="text-base font-medium">
-                          I confirm that I have carefully reviewed all the details above.<br />
-                          मैंने ऊपर दी गई सभी जानकारी को ध्यानपूर्वक जांच लिया है।
-                        </span>
-                      </label>
-                    </div>
-                    <div className="w-full flex flex-col sm:flex-row gap-4 mt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleEdit}
-                        className="w-full sm:w-[200px]"
-                      >
-                        संपादित करें / Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={loading || !agreedToReview}
-                        className="w-full sm:w-[200px]"
-                      >
-                        {loading ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <Loader2 className="animate-spin w-5 h-5" />
-                            प्रस्तुत कर रहा है... / Submitting...
-                          </span>
-                        ) : 'प्रस्तुत करें / Submit'}
-                      </Button>
+                    <div className="w-full mt-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <Checkbox
+                          id="agree-review"
+                          checked={agreedToReview}
+                          onCheckedChange={(checked) => setAgreedToReview(checked === true)}
+                          className="shrink-0"
+                        />
+                        <Label htmlFor="agree-review" className="text-base font-medium cursor-pointer select-none w-full">
+                          I confirm that I have carefully reviewed all the details above / मैंने ऊपर दी गई सभी जानकारी को ध्यानपूर्वक जांच लिया है।
+                        </Label>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full md:justify-between">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleEdit}
+                          className="w-[200px]"
+                        >
+                          संपादित करें / Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={handleSubmit}
+                          disabled={loading || !agreedToReview}
+                          className="w-[200px]"
+                        >
+                          {loading ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <Loader2 className="animate-spin w-5 h-5" />
+                                Submitting...
+                            </span>
+                          ) : 'प्रस्तुत करें / Submit'}
+                        </Button>
+                      </div>
                     </div>
                   </form>
                 </ReviewStep>
@@ -2054,7 +2082,7 @@ export default function RegisterPage() {
                     <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
                       <Button
                         variant="outline"
-                        onClick={() => window.open('/check-status', '_blank')}
+                        onClick={() => { if (typeof window !== 'undefined') window.open('/check-status', '_blank'); }}
                       >
                         स्थिति जांचें / Check Status
                       </Button>
