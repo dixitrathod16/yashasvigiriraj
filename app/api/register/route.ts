@@ -73,10 +73,10 @@ async function checkForDuplicate(aadharNumber: number, formType: RecordType): Pr
     );
 
     const nonDuplicateCategories = ['CHA', 'SAN'];
-    
+
     if (result.Responses?.[USER_TABLE]?.length) {
       for (const data of result.Responses?.[USER_TABLE]) {
-        if ((formType === data.formType) || (nonDuplicateCategories.includes(formType) && nonDuplicateCategories.includes(data.formType))) {
+        if ((formType === data.formType) || (Number(aadharNumber) !== Number('999999999999') && nonDuplicateCategories.includes(formType) && nonDuplicateCategories.includes(data.formType))) {
           return true;
         }
       }
@@ -92,20 +92,21 @@ async function checkForDuplicate(aadharNumber: number, formType: RecordType): Pr
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    
+
     // Check for duplicate
     const isDuplicate = await checkForDuplicate(data.aadharNumber, data.formType);
     if (isDuplicate) {
       return NextResponse.json(
-        { 
-          error: "A registration with this Aadhar Number already exists. Please check your details and try again." },
+        {
+          error: "A registration with this Aadhar Number already exists. Please check your details and try again."
+        },
         { status: 409 }
       );
     }
-    
+
     const nextId = await getNextId(data.formType as RecordType);
     const registrationId = `${data.formType}${nextId}`;
-    
+
     // Save to DynamoDB
     await dynamoDb.send(
       new PutCommand({
@@ -123,10 +124,10 @@ export async function POST(request: Request) {
       })
     );
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: "Registration successful",
-      registrationId 
+      registrationId
     });
   } catch (error) {
     console.error('Registration error:', error);
