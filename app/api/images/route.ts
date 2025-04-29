@@ -76,7 +76,11 @@ export async function GET() {
       await setCachedData(CACHE_KEY, responseData, 7200);
     }
 
-    return NextResponse.json(responseData);
+    return NextResponse.json(responseData, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate', // Ensure no caching
+      },
+    });
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json(
