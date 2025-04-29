@@ -1,53 +1,47 @@
 import { NextResponse } from 'next/server';
-import { GetCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { dynamoDb } from '@/lib/dynamodb';
 
 const USER_TABLE = 'user_registrations';
 
 export async function POST(request: Request) {
   try {
-    const { aadharNumber, registrationId } = await request.json();
+    const { aadharNumber } = await request.json();
 
-    if (!aadharNumber || !registrationId) {
+    if (!aadharNumber) {
       return NextResponse.json(
-        { error: 'Aadhar number and registration ID are required' },
+        { error: 'Aadhar number is required' },
         { status: 400 }
       );
     }
 
-    // Find the registration with matching aadhar number and registration ID
+    // Query all registrations for the given aadhar number using GSI
     const result = await dynamoDb.send(
-      new GetCommand({
+      new QueryCommand({
         TableName: USER_TABLE,
-        Key: {
-          formType: registrationId.substring(0, 3), // Extract form type from registration ID (e.g., 'CHA' from 'CHA1234')
-          aadharNumber: Number(aadharNumber),
+        IndexName: 'IdIndex',
+        KeyConditionExpression: 'aadharNumber = :aadharNumber',
+        ExpressionAttributeValues: {
+          ':aadharNumber': Number(aadharNumber),
         },
       })
     );
 
-    if (!result.Item) {
+    if (!result.Items || result.Items.length === 0) {
       return NextResponse.json(
-        { error: 'Registration not found' },
+        { error: 'No registrations found for this Aadhar number' },
         { status: 404 }
       );
     }
 
-    // Verify that the registration ID matches
-    if (result.Item.id !== registrationId) {
-      return NextResponse.json(
-        { error: 'Registration not found' },
-        { status: 404 }
-      );
-    }
+    // Return complete registration details
+    const registrations = result.Items.map(item => ({
+      ...item,
+      registrationId: item.id,
+      lastUpdated: item.updatedAt || item.createdAt,
+    }));
 
-    return NextResponse.json({
-      fullName: result.Item.fullName,
-      status: result.Item.status,
-      lastUpdated: result.Item.updatedAt || result.Item.createdAt,
-      remarks: result.Item.remarks || '',
-      formType: result.Item.formType,
-    });
+    return NextResponse.json({ registrations });
   } catch (error) {
     console.error('Error checking status:', error);
     return NextResponse.json(
