@@ -385,7 +385,7 @@ export default function CheckStatusPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <RegistrationNavigation />
-      <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-16">
+      <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-16 mt-4">
         <div className="container mx-auto px-4 py-6 space-y-6">
           <motion.section
             className="flex flex-col items-center max-w-3xl mx-auto"
