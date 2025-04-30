@@ -772,7 +772,7 @@ export default function RegisterPage() {
       errors.emergencyContact = "आपातकालीन नंबर आवश्यक है / Emergency number is required";
     } else if (!/^\d{10}$/.test(formData.emergencyContact.toString())) {
       errors.emergencyContact = "आपातकालीन नंबर 10 अंकों का होना चाहिए / Emergency number should be 10 digits";
-    } else if (formData.emergencyContact !== '9999999999' && formData.emergencyContact === formData.phoneNumber) {
+    } else if (Number(formData.emergencyContact) !== Number('9999999999') && formData.emergencyContact === formData.phoneNumber) {
       errors.emergencyContact = "आपातकालीन नंबर मोबाइल नंबर से अलग होना चाहिए / Emergency number should be different from mobile number";
     }
 
