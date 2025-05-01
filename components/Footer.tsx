@@ -47,7 +47,7 @@ export function Footer() {
           </motion.a>
         </p>
         <p className="text-gray-600">
-          Connect with me for queries:
+          Need a website for your event or project?
           <a
             href="https://wa.me/919738876147"
             target="_blank"

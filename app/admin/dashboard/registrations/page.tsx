@@ -92,7 +92,7 @@ export default function RegistrationsPage() {
   const pageSizeOptions = [5, 10, 20, 50];
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [previewImageAlt, setPreviewImageAlt] = useState<string>('');
-  const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt'>('createdAt');
+  const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt' | 'city' | 'village'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Calculate totals per category
@@ -114,15 +114,16 @@ export default function RegistrationsPage() {
       // Sort createdAt as a date
       return sortOrder === 'asc' ? new Date(aValue).getTime() - new Date(bValue).getTime() : new Date(bValue).getTime() - new Date(aValue).getTime();
     } else {
-      // Sort other fields as strings
-      return sortOrder === 'asc' ? (aValue < bValue ? -1 : aValue > bValue ? 1 : 0) : (aValue > bValue ? -1 : aValue < bValue ? 1 : 0);
+      // Sort other fields (including city and village) as strings
+      return sortOrder === 'asc' ? 
+        String(aValue).localeCompare(String(bValue)) : 
+        String(bValue).localeCompare(String(aValue));
     }
   };
 
   // Sort registrations based on current sort criteria
   const sortedRegistrations = [...registrations]
-    .sort(sortRegistrations)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort(sortRegistrations);
 
   // Filtered registrations by search, category, and status
   const filteredRegistrations = sortedRegistrations.filter(reg =>
@@ -381,15 +382,45 @@ export default function RegistrationsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead onClick={() => { setSortColumn('id'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>ID</TableHead>
-              <TableHead onClick={() => { setSortColumn('fullName'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>Name</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-gray-50 transition-colors" 
+                onClick={() => { setSortColumn('id'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+              >
+                ID {sortColumn === 'id' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => { setSortColumn('fullName'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+              >
+                Name {sortColumn === 'fullName' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
               <TableHead>Guardian Name</TableHead>
               <TableHead>Mobile</TableHead>
               <TableHead>Aadhar Number</TableHead>
-              <TableHead>City</TableHead>
-              <TableHead>Village</TableHead>
-              <TableHead onClick={() => { setSortColumn('createdAt'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>Date</TableHead>
-              <TableHead onClick={() => { setSortColumn('age'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>Age</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => { setSortColumn('city'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+              >
+                City {sortColumn === 'city' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => { setSortColumn('village'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+              >
+                Village {sortColumn === 'village' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => { setSortColumn('createdAt'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+              >
+                Date {sortColumn === 'createdAt' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => { setSortColumn('age'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+              >
+                Age {sortColumn === 'age' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
               <TableHead>Gender</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
@@ -450,167 +481,256 @@ export default function RegistrationsPage() {
       {mainContent}
       {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-3xl w-full max-h-[98vh] min-h-[60vh] overflow-y-auto px-0 py-0">
-          <DialogHeader className="px-8 pt-7 pb-3 border-b bg-gradient-to-r from-primary/5 to-secondary/5 rounded-t-lg">
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-primary">
-              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-              Registration Details
-            </DialogTitle>
+        <DialogContent className="max-w-[95vw] w-full max-h-[95vh] min-h-[60vh] overflow-y-auto p-0">
+          <DialogHeader className="px-8 pt-7 pb-3 border-b bg-gradient-to-r from-primary/5 to-secondary/5 rounded-t-lg sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-primary">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                Registration Details
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full hover:bg-gray-100"
+                onClick={() => setIsViewDialogOpen(false)}
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="sr-only">Close</span>
+              </Button>
+            </div>
           </DialogHeader>
           {selectedRegistration && (
-            <div className="px-8 py-6 bg-white/95">
-              {/* Top: Category and Registration ID */}
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div className="bg-white/95">
+              {/* Main Content Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6 p-8">
+                {/* Left Column - Registration Details */}
+                <div className="space-y-6">
+                  {/* Top: Category and Registration ID */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                        {categories.find(c => c.id === selectedRegistration.formType)?.titleEnglish}
+                      </span>
+                      <span className="text-sm text-gray-500">({categories.find(c => c.id === selectedRegistration.formType)?.titleHindi})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-700">Registration ID:</span>
+                      <span className="text-primary font-bold tracking-wide">{selectedRegistration.id}</span>
+                    </div>
+                  </div>
+
+                  {/* Personal Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Full Name</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.fullName}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Age & Gender</label>
+                          <p className="text-base font-medium text-gray-900 flex items-center gap-2">
+                            {selectedRegistration.age} years • 
+                            <span className="inline-flex items-center gap-1">
+                              {selectedRegistration.gender === 'M' ? (
+                                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 8l4-4m0 0v4m0-4h-4" /></svg>
+                              ) : (
+                                <svg className="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4m0 0V8m0 4h4m-4 0H8" /></svg>
+                              )}
+                              {selectedRegistration.gender === 'M' ? 'Male' : 'Female'}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Guardian Name</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.guardianName}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Aadhar Number</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.aadharNumber}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Previous Participation</label>
+                          <p className="text-base font-medium">
+                            <span className={`inline-block px-2 py-0.5 rounded text-sm font-semibold ${selectedRegistration.hasParticipatedBefore ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                              {selectedRegistration.hasParticipatedBefore ? 'Yes' : 'No'}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Registration Date</label>
+                          <p className="text-base font-medium text-gray-900">{new Date(selectedRegistration.createdAt).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Phone Number</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.phoneNumber}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">WhatsApp Number</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.whatsappNumber}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Emergency Contact</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.emergencyContact}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">City</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.city}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Village</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.village}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-500">Pin Code</label>
+                          <p className="text-base font-medium text-gray-900">{selectedRegistration.pinCode}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2 mt-4">
+                      <label className="text-sm font-medium text-gray-500">Full Address</label>
+                      <p className="text-base font-medium text-gray-900 whitespace-pre-line">{selectedRegistration.address}</p>
+                    </div>
+                  </div>
+
+                  {/* Additional Information */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <h3 className="text-lg font-semibold text-gray-900">Additional Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Linked Form</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.linkedForm || 'Not Available'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Existing Tapasya</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.existingTapasya || 'Not Available'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column - Images and Status */}
+                <div className="space-y-6 lg:border-l lg:pl-6">
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
+                    <div className="grid grid-cols-1 gap-6">
+                      {/* Passport Photo */}
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium text-gray-500">Passport Photo</label>
+                        <div 
+                          className="relative aspect-[3/4] w-full max-w-sm mx-auto border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                          onClick={() => {
+                            setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`);
+                            setPreviewImageAlt('Passport Photo');
+                          }}
+                        >
+                          <Image
+                            src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`}
+                            alt="Passport Photo"
+                            fill
+                            className="object-contain"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
+                            <span className="text-white font-semibold">Click to Preview</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Aadhar Card */}
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium text-gray-500">Aadhar Card</label>
+                        <div 
+                          className="relative aspect-[3/4] w-full max-w-sm mx-auto border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                          onClick={() => {
+                            setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`);
+                            setPreviewImageAlt('Aadhar Card');
+                          }}
+                        >
+                          <Image
+                            src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`}
+                            alt="Aadhar Card"
+                            fill
+                            className="object-contain"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
+                            <span className="text-white font-semibold">Click to Preview</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Bottom Sticky Bar */}
+              <div className="sticky bottom-0 left-0 right-0 p-4 bg-white border-t flex flex-wrap items-center justify-between shadow-lg bg-white/95 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-primary font-semibold text-sm">
-                    {categories.find(c => c.id === selectedRegistration.formType)?.titleEnglish}
+                  <span className="text-sm font-medium text-gray-500 hidden sm:inline">Status:</span>
+                  <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-sm font-semibold ${
+                    selectedRegistration.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 
+                    selectedRegistration.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {selectedRegistration.status}
                   </span>
-                  <span className="text-xs text-gray-500">({categories.find(c => c.id === selectedRegistration.formType)?.titleHindi})</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="font-semibold text-gray-700 text-xs">ID:</span>
-                  <span className="text-primary font-bold text-sm tracking-wide">{selectedRegistration.id}</span>
-                </div>
-              </div>
 
-              {/* Main Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-[15px]">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Full Name:</span>
-                    <span>{selectedRegistration.fullName}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Age:</span>
-                    <span>{selectedRegistration.age}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Gender:</span>
-                    <span className="inline-flex items-center gap-1">
-                      {selectedRegistration.gender === 'M' ? (
-                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 8l4-4m0 0v4m0-4h-4" /></svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4m0 0V8m0 4h4m-4 0H8" /></svg>
-                      )}
-                      {selectedRegistration.gender === 'M' ? 'Male' : 'Female'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Guardian:</span>
-                    <span>{selectedRegistration.guardianName}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">City:</span>
-                    <span>{selectedRegistration.city}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Village:</span>
-                    <span>{selectedRegistration.village}</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-semibold text-primary pt-0.5">Address:</span>
-                    <span className="break-words whitespace-pre-line mt-0.5">{selectedRegistration.address}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Pin Code:</span>
-                    <span>{selectedRegistration.pinCode}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Phone:</span>
-                    <span>{selectedRegistration.phoneNumber}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">WhatsApp:</span>
-                    <span>{selectedRegistration.whatsappNumber}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Emergency:</span>
-                    <span>{selectedRegistration.emergencyContact}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Aadhar:</span>
-                    <span>{selectedRegistration.aadharNumber}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Prev. Participation:</span>
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${selectedRegistration.hasParticipatedBefore ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}`}>{selectedRegistration.hasParticipatedBefore ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Linked Form:</span>
-                    <span>{selectedRegistration.linkedForm || <span className="text-gray-400">N/A</span>}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">Tapasya:</span>
-                    <span>{selectedRegistration.existingTapasya || <span className="text-gray-400">N/A</span>}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="my-4 border-t" />
-
-              {/* Images Row */}
-              <div className="flex flex-wrap gap-8 items-center justify-center">
-                <div className="flex flex-col items-center">
-                  <span className="font-semibold text-gray-700 mb-1">Passport Photo</span>
-                  <div className="relative w-28 h-36 border rounded-lg overflow-hidden group cursor-pointer shadow-sm" onClick={() => {
-                    setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`);
-                    setPreviewImageAlt('Passport Photo');
-                  }}>
-                    <Image
-                      src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`}
-                      alt="Passport Photo"
-                      fill
-                      className="object-cover group-hover:opacity-80 transition-opacity"
-                    />
-                    <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 text-white text-xs font-semibold transition-opacity">Preview</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center">
-                  <span className="font-semibold text-gray-700 mb-1">Aadhar Card</span>
-                  <div className="relative w-28 h-36 border rounded-lg overflow-hidden group cursor-pointer shadow-sm" onClick={() => {
-                    setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`);
-                    setPreviewImageAlt('Aadhar Card');
-                  }}>
-                    <Image
-                      src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`}
-                      alt="Aadhar Card"
-                      fill
-                      className="object-cover group-hover:opacity-80 transition-opacity"
-                    />
-                    <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 text-white text-xs font-semibold transition-opacity">Preview</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="my-4 border-t" />
-
-              {/* Status and Actions */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-700 text-sm">Status:</span>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${selectedRegistration.status === 'APPROVED' ? 'bg-green-100 text-green-700' : selectedRegistration.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{selectedRegistration.status}</span>
-                </div>
-                <div className="flex gap-2">
                   <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(selectedRegistration)}
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6 6M3 21h6l11-11a2.828 2.828 0 00-4-4L5 17v4z" /></svg>
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
                     variant={selectedRegistration.status === 'APPROVED' ? 'outline' : 'default'}
                     onClick={() => handleStatusChange(selectedRegistration.id, 'APPROVED')}
                     disabled={selectedRegistration.status === 'APPROVED'}
+                    size="sm"
+                    className="h-9 px-2 sm:px-3"
+                    title="Approve"
                   >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    Approve
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="hidden sm:inline ml-2">Approve</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleEdit(selectedRegistration)}
+                    size="sm"
+                    className="h-9 px-2 sm:px-3"
+                    title="Edit"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6 6M3 21h6l11-11a2.828 2.828 0 00-4-4L5 17v4z" />
+                    </svg>
+                    <span className="hidden sm:inline ml-2">Edit</span>
+                  </Button>
+                  <div className="w-px h-6 bg-gray-200 mx-1 sm:mx-2" /> {/* Vertical Divider */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 px-2 sm:px-3"
+                    onClick={() => setIsViewDialogOpen(false)}
+                    title="Close"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span className="hidden sm:inline ml-2">Close</span>
                   </Button>
                 </div>
               </div>
@@ -634,19 +754,53 @@ export default function RegistrationsPage() {
       </Dialog>
       {/* Full-size image preview dialog */}
       <PreviewDialog open={!!previewImageUrl} onOpenChange={(open) => { if (!open) setPreviewImageUrl(null); }}>
-        <PreviewDialogContent className="flex flex-col items-center justify-center max-w-3xl w-full">
+        <PreviewDialogContent className="max-w-[95vw] w-full max-h-[95vh] h-[95vh] overflow-hidden bg-black/90 p-0">
           {previewImageUrl && (
-            <div className="w-full flex flex-col items-center">
-              <img
-                src={previewImageUrl}
-                alt={previewImageAlt}
-                className="max-w-full max-h-[80vh] rounded-lg border shadow-lg"
-                style={{ objectFit: 'contain' }}
-              />
-              <span className="mt-2 text-gray-600 text-sm font-semibold">{previewImageAlt}</span>
-              {selectedRegistration && (
-                <span className="mt-1 text-gray-800 text-base font-bold">{selectedRegistration.fullName}</span>
-              )}
+            <div className="relative w-full h-full flex flex-col">
+              {/* Close button */}
+              <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/10 hover:bg-white/20 text-white"
+                  onClick={() => setPreviewImageUrl(null)}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span className="ml-2">Close Preview</span>
+                </Button>
+              </div>
+
+              {/* Image container with proper scaling */}
+              <div className="flex-1 w-full h-full flex items-center justify-center p-4 overflow-hidden">
+                <div className="relative max-w-full max-h-full w-auto h-auto">
+                  <img
+                    src={previewImageUrl}
+                    alt={previewImageAlt}
+                    className="max-w-full max-h-[75vh] w-auto h-auto object-contain mx-auto"
+                    style={{ 
+                      objectFit: 'contain',
+                      objectPosition: 'center'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Image info footer */}
+              <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-4 text-center">
+                <p className="font-semibold">{previewImageAlt}</p>
+                {selectedRegistration && (
+                  <>
+                    <p className="text-base text-gray-200">{selectedRegistration.fullName}</p>
+                    {previewImageAlt === 'Aadhar Card' && (
+                      <p className="text-sm text-gray-300 mt-1">
+                        Aadhar: {selectedRegistration.aadharNumber}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           )}
         </PreviewDialogContent>
