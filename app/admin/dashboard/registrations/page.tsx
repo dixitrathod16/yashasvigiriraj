@@ -226,6 +226,7 @@ export default function RegistrationsPage() {
   };
   const appliedFilterChips = useMemo(() => {
     return Object.entries(advancedFilters)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       .filter(([key, value]) => value && value !== 'any')
       .map(([key, value]) => ({
         key,
