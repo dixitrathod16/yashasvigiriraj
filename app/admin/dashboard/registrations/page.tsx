@@ -92,6 +92,8 @@ export default function RegistrationsPage() {
   const pageSizeOptions = [5, 10, 20, 50];
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [previewImageAlt, setPreviewImageAlt] = useState<string>('');
+  const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Calculate totals per category
   const totals = {
@@ -100,8 +102,30 @@ export default function RegistrationsPage() {
     NAV: registrations.filter(r => r.formType === 'NAV').length,
   };
 
+  // Sorting function
+  const sortRegistrations = (a: Registration, b: Registration) => {
+    const aValue = a[sortColumn];
+    const bValue = b[sortColumn];
+
+    if (sortColumn === 'age') {
+      // Ensure age is treated as a number
+      return sortOrder === 'asc' ? Number(aValue) - Number(bValue) : Number(bValue) - Number(aValue);
+    } else if (sortColumn === 'createdAt') {
+      // Sort createdAt as a date
+      return sortOrder === 'asc' ? new Date(aValue).getTime() - new Date(bValue).getTime() : new Date(bValue).getTime() - new Date(aValue).getTime();
+    } else {
+      // Sort other fields as strings
+      return sortOrder === 'asc' ? (aValue < bValue ? -1 : aValue > bValue ? 1 : 0) : (aValue > bValue ? -1 : aValue < bValue ? 1 : 0);
+    }
+  };
+
+  // Sort registrations based on current sort criteria
+  const sortedRegistrations = [...registrations]
+    .sort(sortRegistrations)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
   // Filtered registrations by search, category, and status
-  const filteredRegistrations = registrations.filter(reg =>
+  const filteredRegistrations = sortedRegistrations.filter(reg =>
     (categoryFilter === 'ALL' || reg.formType === categoryFilter) &&
     (statusFilter === 'ALL' || reg.status === statusFilter) &&
     (
@@ -316,7 +340,7 @@ export default function RegistrationsPage() {
           <div className="text-sm">
             <p>Guardian: {reg.guardianName}</p>
             <p>City: {reg.city}</p>
-            <p>Date: {new Date(reg.createdAt).toLocaleDateString()}</p>
+            <p>Date: {new Date(reg.createdAt).toLocaleString()}</p>
           </div>
           <div className="flex gap-2 pt-2">
             <Button
@@ -357,14 +381,16 @@ export default function RegistrationsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Name</TableHead>
+              <TableHead onClick={() => { setSortColumn('id'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>ID</TableHead>
+              <TableHead onClick={() => { setSortColumn('fullName'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>Name</TableHead>
               <TableHead>Guardian Name</TableHead>
               <TableHead>Mobile</TableHead>
               <TableHead>Aadhar Number</TableHead>
               <TableHead>City</TableHead>
               <TableHead>Village</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead onClick={() => { setSortColumn('createdAt'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>Date</TableHead>
+              <TableHead onClick={() => { setSortColumn('age'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>Age</TableHead>
+              <TableHead>Gender</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -379,7 +405,9 @@ export default function RegistrationsPage() {
                 <TableCell>{reg.aadharNumber}</TableCell>
                 <TableCell>{reg.city}</TableCell>
                 <TableCell>{reg.village}</TableCell>
-                <TableCell>{new Date(reg.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell>{new Date(reg.createdAt).toLocaleString()}</TableCell>
+                <TableCell>{reg.age}</TableCell>
+                <TableCell>{reg.gender === 'M' ? 'Male' : 'Female'}</TableCell>
                 <TableCell>
                   <span className={
                     reg.status === 'APPROVED' ? 'text-green-600' :
