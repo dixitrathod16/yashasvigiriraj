@@ -428,6 +428,7 @@ export default function RegistrationsPage() {
           </div>
           <div className="flex gap-2 pt-2 justify-end">
             <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={clearAllFilters}>Clear</Button>
+            <Button size="sm" variant="default" className="h-7 px-3 text-xs" onClick={() => setIsAdvancedOpen(false)}>Apply</Button>
           </div>
         </div>
       </PopoverContent>
