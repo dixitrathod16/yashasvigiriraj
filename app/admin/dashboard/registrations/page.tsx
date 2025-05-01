@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -21,6 +20,10 @@ import {
 } from "@/components/ui/dialog";
 import Image from "next/image";
 import { Dialog as PreviewDialog, DialogContent as PreviewDialogContent } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { X } from 'lucide-react';
 
 interface Registration {
   id: string;
@@ -80,7 +83,6 @@ const categories = [
 export default function RegistrationsPage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -94,6 +96,30 @@ export default function RegistrationsPage() {
   const [previewImageAlt, setPreviewImageAlt] = useState<string>('');
   const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt' | 'city' | 'village'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [advancedFilters, setAdvancedFilters] = useState({
+    id: '',
+    fullName: '',
+    ageMin: '',
+    ageMax: '',
+    gender: '',
+    guardianName: '',
+    address: '',
+    city: '',
+    pinCode: '',
+    village: '',
+    aadharNumber: '',
+    phoneNumber: '',
+    whatsappNumber: '',
+    emergencyContact: '',
+    existingTapasya: '',
+    linkedForm: '',
+    hasParticipatedBefore: '',
+    formType: '',
+    createdAtFrom: '',
+    createdAtTo: '',
+    status: '',
+  });
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   // Calculate totals per category
   const totals = {
@@ -115,8 +141,8 @@ export default function RegistrationsPage() {
       return sortOrder === 'asc' ? new Date(aValue).getTime() - new Date(bValue).getTime() : new Date(bValue).getTime() - new Date(aValue).getTime();
     } else {
       // Sort other fields (including city and village) as strings
-      return sortOrder === 'asc' ? 
-        String(aValue).localeCompare(String(bValue)) : 
+      return sortOrder === 'asc' ?
+        String(aValue).localeCompare(String(bValue)) :
         String(bValue).localeCompare(String(aValue));
     }
   };
@@ -125,16 +151,35 @@ export default function RegistrationsPage() {
   const sortedRegistrations = [...registrations]
     .sort(sortRegistrations);
 
-  // Filtered registrations by search, category, and status
-  const filteredRegistrations = sortedRegistrations.filter(reg =>
-    (categoryFilter === 'ALL' || reg.formType === categoryFilter) &&
-    (statusFilter === 'ALL' || reg.status === statusFilter) &&
-    (
-      reg.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reg.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reg.phoneNumber.toString().includes(searchTerm)
-    )
-  );
+  // Advanced filter logic
+  const filteredRegistrations = sortedRegistrations.filter((reg: Registration) => {
+    // Category and status filter (legacy, for buttons)
+    if (categoryFilter !== 'ALL' && reg.formType !== categoryFilter) return false;
+    if (statusFilter !== 'ALL' && reg.status !== statusFilter) return false;
+    // Advanced filters
+    if (advancedFilters.id && !reg.id.toLowerCase().includes(advancedFilters.id.toLowerCase())) return false;
+    if (advancedFilters.fullName && !reg.fullName.toLowerCase().includes(advancedFilters.fullName.toLowerCase())) return false;
+    if (advancedFilters.ageMin && Number(reg.age) < Number(advancedFilters.ageMin)) return false;
+    if (advancedFilters.ageMax && Number(reg.age) > Number(advancedFilters.ageMax)) return false;
+    if (advancedFilters.gender && advancedFilters.gender !== 'any' && reg.gender !== advancedFilters.gender) return false;
+    if (advancedFilters.city && !reg.city.toLowerCase().includes(advancedFilters.city.toLowerCase())) return false;
+    if (advancedFilters.village && !reg.village.toLowerCase().includes(advancedFilters.village.toLowerCase())) return false;
+    if (advancedFilters.aadharNumber && !reg.aadharNumber.toString().includes(advancedFilters.aadharNumber)) return false;
+    if (advancedFilters.phoneNumber && !reg.phoneNumber.toString().includes(advancedFilters.phoneNumber)) return false;
+    if (advancedFilters.whatsappNumber && !reg.whatsappNumber.toString().includes(advancedFilters.whatsappNumber)) return false;
+    if (advancedFilters.emergencyContact && !reg.emergencyContact.toString().includes(advancedFilters.emergencyContact)) return false;
+    if (advancedFilters.existingTapasya && !(reg.existingTapasya || '').toLowerCase().includes(advancedFilters.existingTapasya.toLowerCase())) return false;
+    if (advancedFilters.linkedForm && !(reg.linkedForm || '').toLowerCase().includes(advancedFilters.linkedForm.toLowerCase())) return false;
+    if (advancedFilters.hasParticipatedBefore && advancedFilters.hasParticipatedBefore !== 'any') {
+      if (advancedFilters.hasParticipatedBefore === 'true' && !reg.hasParticipatedBefore) return false;
+      if (advancedFilters.hasParticipatedBefore === 'false' && reg.hasParticipatedBefore) return false;
+    }
+    if (advancedFilters.formType && advancedFilters.formType !== 'any' && reg.formType !== advancedFilters.formType) return false;
+    if (advancedFilters.status && advancedFilters.status !== 'any' && reg.status !== advancedFilters.status) return false;
+    if (advancedFilters.createdAtFrom && new Date(reg.createdAt) < new Date(advancedFilters.createdAtFrom)) return false;
+    if (advancedFilters.createdAtTo && new Date(reg.createdAt) > new Date(advancedFilters.createdAtTo)) return false;
+    return true;
+  });
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRegistrations.length / pageSize);
@@ -157,6 +202,66 @@ export default function RegistrationsPage() {
     { id: 'PENDING', label: 'Pending', count: statusCounts.PENDING },
     { id: 'APPROVED', label: 'Approved', count: statusCounts.APPROVED },
   ];
+
+  // Helper for filter chips
+  const filterLabels: Record<string, string> = {
+    id: 'Registration ID',
+    fullName: 'Full Name',
+    city: 'City',
+    village: 'Village',
+    linkedForm: 'Linked Form',
+    aadharNumber: 'Aadhar Number',
+    phoneNumber: 'Phone Number',
+    ageMin: 'Age Min',
+    ageMax: 'Age Max',
+    gender: 'Gender',
+    hasParticipatedBefore: 'Previous Participation',
+    createdAtFrom: 'Created From',
+    createdAtTo: 'Created To',
+  };
+  const filterValueDisplay = (key: string, value: string) => {
+    if (key === 'gender') return value === 'M' ? 'Male' : value === 'F' ? 'Female' : value;
+    if (key === 'hasParticipatedBefore') return value === 'true' ? 'Yes' : value === 'false' ? 'No' : value;
+    return value;
+  };
+  const appliedFilterChips = useMemo(() => {
+    return Object.entries(advancedFilters)
+      .filter(([key, value]) => value && value !== 'any')
+      .map(([key, value]) => ({
+        key,
+        label: filterLabels[key] || key,
+        value: filterValueDisplay(key, value),
+      }));
+  }, [advancedFilters]);
+
+  const removeFilter = (key: string) => {
+    setAdvancedFilters(f => ({ ...f, [key]: '' }));
+  };
+  const clearAllFilters = () => {
+    setAdvancedFilters({
+      id: '',
+      fullName: '',
+      ageMin: '',
+      ageMax: '',
+      gender: '',
+      guardianName: '',
+      address: '',
+      city: '',
+      pinCode: '',
+      village: '',
+      aadharNumber: '',
+      phoneNumber: '',
+      whatsappNumber: '',
+      emergencyContact: '',
+      existingTapasya: '',
+      linkedForm: '',
+      hasParticipatedBefore: '',
+      formType: '',
+      createdAtFrom: '',
+      createdAtTo: '',
+      status: '',
+    });
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -219,6 +324,117 @@ export default function RegistrationsPage() {
     return <div className="p-6 mt-10">Loading...</div>;
   }
 
+  // Advanced filter popover UI (mobile friendly, with close button)
+  const advancedFilterSection = (
+    <Popover open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="w-fit">
+          <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          Advanced Filters
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="p-4 w-[340px] max-w-[95vw] md:w-[340px] md:max-w-[340px] rounded-md md:rounded-md left-0 right-0 md:left-auto md:right-auto z-[60]"
+        style={{ maxWidth: '95vw' }}
+      >
+        {/* Close button */}
+        <button
+          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
+          onClick={() => setIsAdvancedOpen(false)}
+          aria-label="Close advanced filters"
+          type="button"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-row gap-2 items-end">
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Registration ID</label>
+              <Input className="h-7 text-xs" value={advancedFilters.id} onChange={e => setAdvancedFilters(f => ({ ...f, id: e.target.value }))} />
+            </div>
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Name</label>
+              <Input className="h-7 text-xs" value={advancedFilters.fullName} onChange={e => setAdvancedFilters(f => ({ ...f, fullName: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex flex-row gap-2 items-end">
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">City</label>
+              <Input className="h-7 text-xs" value={advancedFilters.city} onChange={e => setAdvancedFilters(f => ({ ...f, city: e.target.value }))} />
+            </div>
+            <div className="flex flex-col flex-1  gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Village</label>
+              <Input className="h-7 text-xs" value={advancedFilters.village} onChange={e => setAdvancedFilters(f => ({ ...f, village: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex flex-row gap-2 items-end">
+            <div className="flex flex-col flex-1  gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Aadhar Number</label>
+              <Input type="number" className="h-7 text-xs" value={advancedFilters.aadharNumber} onChange={e => setAdvancedFilters(f => ({ ...f, aadharNumber: e.target.value }))} />
+            </div>
+            <div className="flex flex-col flex-1  gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Linked Form</label>
+              <Input className="h-7 text-xs" value={advancedFilters.linkedForm} onChange={e => setAdvancedFilters(f => ({ ...f, linkedForm: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex flex-row gap-2 items-end">
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Phone Number</label>
+              <Input type="number" className="h-7 text-xs" value={advancedFilters.phoneNumber} onChange={e => setAdvancedFilters(f => ({ ...f, phoneNumber: e.target.value }))} />
+            </div>
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Gender</label>
+              <Select value={advancedFilters.gender} onValueChange={v => setAdvancedFilters(f => ({ ...f, gender: v }))}>
+                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                <SelectContent className="z-[70]">
+                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="M">Male</SelectItem>
+                  <SelectItem value="F">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex flex-row gap-2 items-end">
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Age Min</label>
+              <Input type="number" className="h-7 text-xs" value={advancedFilters.ageMin} onChange={e => setAdvancedFilters(f => ({ ...f, ageMin: e.target.value }))} />
+            </div>
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Age Max</label>
+              <Input type="number" className="h-7 text-xs" value={advancedFilters.ageMax} onChange={e => setAdvancedFilters(f => ({ ...f, ageMax: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex flex-row gap-2 items-end">
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Created From</label>
+              <Input type="date" className="h-7 text-xs" value={advancedFilters.createdAtFrom} onChange={e => setAdvancedFilters(f => ({ ...f, createdAtFrom: e.target.value }))} />
+            </div>
+            <div className="flex flex-col flex-1 gap-1">
+              <label className="text-xs text-gray-700 font-semibold">Created To</label>
+              <Input type="date" className="h-7 text-xs" value={advancedFilters.createdAtTo} onChange={e => setAdvancedFilters(f => ({ ...f, createdAtTo: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-700 font-semibold">Previous Participation</label>
+            <Select value={advancedFilters.hasParticipatedBefore} onValueChange={v => setAdvancedFilters(f => ({ ...f, hasParticipatedBefore: v }))}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+              <SelectContent className="z-[70]">
+                <SelectItem value="any">Any</SelectItem>
+                <SelectItem value="true">Yes</SelectItem>
+                <SelectItem value="false">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2 pt-2 justify-end">
+            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={clearAllFilters}>Clear</Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
+  // Filter bar with advanced filter button on the right
   const filterBar = (
     <div className="flex flex-col gap-4 mb-4 w-full">
       {/* Master Filter: Category */}
@@ -237,20 +453,26 @@ export default function RegistrationsPage() {
           ))}
         </div>
       </div>
-      {/* Sub Filter: Status */}
-      <div className="flex flex-col gap-2">
-        <span className="font-semibold text-sm text-gray-700">Status</span>
-        <div className="flex flex-wrap gap-2">
-          {statusButtons.map(btn => (
-            <Button
-              key={btn.id}
-              variant={statusFilter === btn.id ? 'default' : 'outline'}
-              onClick={() => { setStatusFilter(btn.id as typeof statusFilter); setCurrentPage(1); }}
-              className="px-3 py-2"
-            >
-              {btn.label} <span className="ml-2 text-xs text-gray-500">({btn.count})</span>
-            </Button>
-          ))}
+      {/* Status Filter and Advanced Filters Button */}
+      <div className="flex flex-col md:flex-row md:items-center md:gap-4 gap-2">
+        <div className="flex flex-col gap-2 flex-1">
+          <span className="font-semibold text-sm text-gray-700">Status</span>
+          <div className="flex flex-wrap gap-2">
+            {statusButtons.map(btn => (
+              <Button
+                key={btn.id}
+                variant={statusFilter === btn.id ? 'default' : 'outline'}
+                onClick={() => { setStatusFilter(btn.id as typeof statusFilter); setCurrentPage(1); }}
+                className="px-3 py-2"
+              >
+                {btn.label} <span className="ml-2 text-xs text-gray-500">({btn.count})</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+        {/* Advanced Filters Button: right of status on desktop, below on mobile */}
+        <div className="flex md:mt-6 mt-0 md:justify-end justify-start w-full md:w-auto">
+          {advancedFilterSection}
         </div>
       </div>
     </div>
@@ -310,16 +532,32 @@ export default function RegistrationsPage() {
     </div>
   );
 
+  // Chips for applied filters
+  const filterChips = (
+    <div className="flex flex-wrap gap-2 mb-4">
+      {appliedFilterChips.map((chip, idx) => (
+        <span key={chip.label + chip.value + idx} className="inline-flex items-center bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-medium">
+          {chip.label}: {chip.value}
+          <button
+            className="ml-2 text-primary-foreground bg-primary/60 rounded-full p-0.5 hover:bg-primary"
+            onClick={() => removeFilter(chip.key)}
+            aria-label={`Remove filter ${chip.label}`}
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </span>
+      ))}
+      {appliedFilterChips.length > 1 && (
+        <Button size="sm" variant="ghost" className="ml-2" onClick={clearAllFilters}>Clear All</Button>
+      )}
+    </div>
+  );
+
   const mainContent = isMobile ? (
     <div className="space-y-4 p-2 mt-2">
       {filterBar}
-      <Input
-        placeholder="Search by ID,name or mobile number"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4"
-      />
-      {paginatedRegistrations.map((reg) => (
+      {filterChips}
+      {paginatedRegistrations.map((reg: Registration) => (
         <Card
           key={reg.id}
           className="p-4 space-y-2 cursor-pointer hover:shadow-lg transition-shadow"
@@ -332,14 +570,13 @@ export default function RegistrationsPage() {
               <p className="text-sm text-gray-500">{reg.phoneNumber}</p>
             </div>
             <span className={`text-sm ${reg.status === 'APPROVED' ? 'text-green-600' :
-                reg.status === 'REJECTED' ? 'text-red-600' :
-                  'text-yellow-600'
+              reg.status === 'REJECTED' ? 'text-red-600' :
+                'text-yellow-600'
               }`}>
               {reg.status}
             </span>
           </div>
           <div className="text-sm">
-            <p>Guardian: {reg.guardianName}</p>
             <p>City: {reg.city}</p>
             <p>Date: {new Date(reg.createdAt).toLocaleString()}</p>
           </div>
@@ -371,51 +608,45 @@ export default function RegistrationsPage() {
           <h2 className="text-xl font-semibold">User Registrations</h2>
         </div>
         {filterBar}
-        <Input
-          placeholder="Search by ID,name or mobile number"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-xs"
-        />
+        {filterChips}
       </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead 
-                className="cursor-pointer hover:bg-gray-50 transition-colors" 
+              <TableHead
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => { setSortColumn('id'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
               >
                 ID {sortColumn === 'id' && (sortOrder === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => { setSortColumn('fullName'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
               >
                 Name {sortColumn === 'fullName' && (sortOrder === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead>Guardian Name</TableHead>
               <TableHead>Mobile</TableHead>
               <TableHead>Aadhar Number</TableHead>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => { setSortColumn('city'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
               >
                 City {sortColumn === 'city' && (sortOrder === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => { setSortColumn('village'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
               >
                 Village {sortColumn === 'village' && (sortOrder === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => { setSortColumn('createdAt'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
               >
                 Date {sortColumn === 'createdAt' && (sortOrder === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => { setSortColumn('age'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
               >
@@ -427,11 +658,10 @@ export default function RegistrationsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedRegistrations.map((reg) => (
+            {paginatedRegistrations.map((reg: Registration) => (
               <TableRow key={reg.id}>
                 <TableCell>{reg.id}</TableCell>
                 <TableCell>{reg.fullName}</TableCell>
-                <TableCell>{reg.guardianName}</TableCell>
                 <TableCell>{reg.phoneNumber}</TableCell>
                 <TableCell>{reg.aadharNumber}</TableCell>
                 <TableCell>{reg.city}</TableCell>
@@ -504,9 +734,9 @@ export default function RegistrationsPage() {
           {selectedRegistration && (
             <div className="bg-white/95">
               {/* Main Content Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6 p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-[1.2fr,1.8fr] gap-6 p-8">
                 {/* Left Column - Registration Details */}
-                <div className="space-y-6">
+                <div className="space-y-6 max-w-2xl">
                   {/* Top: Category and Registration ID */}
                   <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b">
                     <div className="flex items-center gap-2">
@@ -524,48 +754,40 @@ export default function RegistrationsPage() {
                   {/* Personal Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Full Name</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.fullName}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Age & Gender</label>
-                          <p className="text-base font-medium text-gray-900 flex items-center gap-2">
-                            {selectedRegistration.age} years • 
-                            <span className="inline-flex items-center gap-1">
-                              {selectedRegistration.gender === 'M' ? (
-                                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 8l4-4m0 0v4m0-4h-4" /></svg>
-                              ) : (
-                                <svg className="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4m0 0V8m0 4h4m-4 0H8" /></svg>
-                              )}
-                              {selectedRegistration.gender === 'M' ? 'Male' : 'Female'}
-                            </span>
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Guardian Name</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.guardianName}</p>
-                        </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="space-y-2 col-span-2">
+                        <label className="text-sm font-medium text-gray-500">Full Name</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.fullName}</p>
                       </div>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Aadhar Number</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.aadharNumber}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Previous Participation</label>
-                          <p className="text-base font-medium">
-                            <span className={`inline-block px-2 py-0.5 rounded text-sm font-semibold ${selectedRegistration.hasParticipatedBefore ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                              {selectedRegistration.hasParticipatedBefore ? 'Yes' : 'No'}
-                            </span>
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Registration Date</label>
-                          <p className="text-base font-medium text-gray-900">{new Date(selectedRegistration.createdAt).toLocaleString()}</p>
-                        </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Age & Gender</label>
+                        <p className="text-base font-medium text-gray-900 flex items-center gap-2">
+                          {selectedRegistration.age} years •
+                          <span className="inline-flex items-center gap-1">
+                            {selectedRegistration.gender === 'M' ? (
+                              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 8l4-4m0 0v4m0-4h-4" /></svg>
+                            ) : (
+                              <svg className="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4m0 0V8m0 4h4m-4 0H8" /></svg>
+                            )}
+                            {selectedRegistration.gender === 'M' ? 'Male' : 'Female'}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Aadhar Number</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.aadharNumber}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Previous Participation</label>
+                        <p className="text-base font-medium">
+                          <span className={`inline-block px-2 py-0.5 rounded text-sm font-semibold ${selectedRegistration.hasParticipatedBefore ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                            {selectedRegistration.hasParticipatedBefore ? 'Yes' : 'No'}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Registration Date</label>
+                        <p className="text-base font-medium text-gray-900">{new Date(selectedRegistration.createdAt).toLocaleString()}</p>
                       </div>
                     </div>
                   </div>
@@ -573,46 +795,42 @@ export default function RegistrationsPage() {
                   {/* Contact Information */}
                   <div className="space-y-4 pt-4 border-t">
                     <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Phone Number</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.phoneNumber}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">WhatsApp Number</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.whatsappNumber}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Emergency Contact</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.emergencyContact}</p>
-                        </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Phone Number</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.phoneNumber}</p>
                       </div>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">City</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.city}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Village</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.village}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500">Pin Code</label>
-                          <p className="text-base font-medium text-gray-900">{selectedRegistration.pinCode}</p>
-                        </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">WhatsApp Number</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.whatsappNumber}</p>
                       </div>
-                    </div>
-                    <div className="space-y-2 mt-4">
-                      <label className="text-sm font-medium text-gray-500">Full Address</label>
-                      <p className="text-base font-medium text-gray-900 whitespace-pre-line">{selectedRegistration.address}</p>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Emergency Contact</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.emergencyContact}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Pin Code</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.pinCode}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">City</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.city}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Village</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.village}</p>
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                        <label className="text-sm font-medium text-gray-500">Full Address</label>
+                        <p className="text-base font-medium text-gray-900 whitespace-pre-line">{selectedRegistration.address}</p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Additional Information */}
                   <div className="space-y-4 pt-4 border-t">
                     <h3 className="text-lg font-semibold text-gray-900">Additional Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-500">Linked Form</label>
                         <p className="text-base font-medium text-gray-900">{selectedRegistration.linkedForm || 'Not Available'}</p>
@@ -625,16 +843,16 @@ export default function RegistrationsPage() {
                   </div>
                 </div>
 
-                {/* Right Column - Images and Status */}
+                {/* Right Column - Documents */}
                 <div className="space-y-6 lg:border-l lg:pl-6">
                   <div className="space-y-6">
                     <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
-                    <div className="grid grid-cols-1 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                       {/* Passport Photo */}
                       <div className="space-y-3">
                         <label className="text-sm font-medium text-gray-500">Passport Photo</label>
-                        <div 
-                          className="relative aspect-[3/4] w-full max-w-sm mx-auto border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                        <div
+                          className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
                           onClick={() => {
                             setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`);
                             setPreviewImageAlt('Passport Photo');
@@ -648,16 +866,22 @@ export default function RegistrationsPage() {
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
-                            <span className="text-white font-semibold">Click to Preview</span>
+                            <div className="flex flex-col items-center text-white">
+                              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                              </svg>
+                              <span className="text-sm font-semibold">Click to Preview</span>
+                            </div>
                           </div>
                         </div>
+                        <p className="text-xs text-center text-gray-500 mt-1">Click image to view full size</p>
                       </div>
 
                       {/* Aadhar Card */}
                       <div className="space-y-3">
                         <label className="text-sm font-medium text-gray-500">Aadhar Card</label>
-                        <div 
-                          className="relative aspect-[3/4] w-full max-w-sm mx-auto border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                        <div
+                          className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
                           onClick={() => {
                             setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`);
                             setPreviewImageAlt('Aadhar Card');
@@ -671,24 +895,29 @@ export default function RegistrationsPage() {
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
-                            <span className="text-white font-semibold">Click to Preview</span>
+                            <div className="flex flex-col items-center text-white">
+                              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                              </svg>
+                              <span className="text-sm font-semibold">Click to Preview</span>
+                            </div>
                           </div>
                         </div>
+                        <p className="text-xs text-center text-gray-500 mt-1">Click image to view full size</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              
+
               {/* Bottom Sticky Bar */}
               <div className="sticky bottom-0 left-0 right-0 p-4 bg-white border-t flex flex-wrap items-center justify-between shadow-lg bg-white/95 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-500 hidden sm:inline">Status:</span>
-                  <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-sm font-semibold ${
-                    selectedRegistration.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 
-                    selectedRegistration.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 
-                    'bg-yellow-100 text-yellow-700'
-                  }`}>
+                  <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-sm font-semibold ${selectedRegistration.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                      selectedRegistration.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
+                    }`}>
                     {selectedRegistration.status}
                   </span>
                 </div>
@@ -779,7 +1008,7 @@ export default function RegistrationsPage() {
                     src={previewImageUrl}
                     alt={previewImageAlt}
                     className="max-w-full max-h-[75vh] w-auto h-auto object-contain mx-auto"
-                    style={{ 
+                    style={{
                       objectFit: 'contain',
                       objectPosition: 'center'
                     }}
