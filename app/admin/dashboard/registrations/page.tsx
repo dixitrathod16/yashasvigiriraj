@@ -176,8 +176,31 @@ export default function RegistrationsPage() {
     }
     if (advancedFilters.formType && advancedFilters.formType !== 'any' && reg.formType !== advancedFilters.formType) return false;
     if (advancedFilters.status && advancedFilters.status !== 'any' && reg.status !== advancedFilters.status) return false;
-    if (advancedFilters.createdAtFrom && new Date(reg.createdAt) < new Date(advancedFilters.createdAtFrom)) return false;
-    if (advancedFilters.createdAtTo && new Date(reg.createdAt) > new Date(advancedFilters.createdAtTo)) return false;
+    if (advancedFilters.createdAtFrom && advancedFilters.createdAtTo) {
+      const from = new Date(advancedFilters.createdAtFrom);
+      const to = new Date(advancedFilters.createdAtTo);
+      const regDate = new Date(reg.createdAt);
+      // Compare only the date part (ignore time)
+      const fromDate = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      const toDate = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+      const regDateOnly = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+      if (regDateOnly < fromDate || regDateOnly > toDate) return false;
+    } else {
+      if (advancedFilters.createdAtFrom) {
+        const from = new Date(advancedFilters.createdAtFrom);
+        const regDate = new Date(reg.createdAt);
+        const fromDate = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+        const regDateOnly = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+        if (regDateOnly < fromDate) return false;
+      }
+      if (advancedFilters.createdAtTo) {
+        const to = new Date(advancedFilters.createdAtTo);
+        const regDate = new Date(reg.createdAt);
+        const toDate = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+        const regDateOnly = new Date(regDate.getFullYear(), regDate.getMonth(), regDate.getDate());
+        if (regDateOnly > toDate) return false;
+      }
+    }
     return true;
   });
 
@@ -664,7 +687,14 @@ export default function RegistrationsPage() {
               <TableRow key={reg.id}>
                 <TableCell>{reg.id}</TableCell>
                 <TableCell>{reg.fullName}</TableCell>
-                <TableCell>{reg.phoneNumber}</TableCell>
+                <TableCell>
+                  <a
+                    href={`tel:${reg.phoneNumber}`}
+                    className="text-primary underline hover:text-primary/80 transition-colors"
+                  >
+                    {reg.phoneNumber}
+                  </a>
+                </TableCell>
                 <TableCell>{reg.aadharNumber}</TableCell>
                 <TableCell>{reg.city}</TableCell>
                 <TableCell>{reg.village}</TableCell>
@@ -757,14 +787,18 @@ export default function RegistrationsPage() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
                     <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                      <div className="space-y-2 col-span-2">
+                      <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-500">Full Name</label>
                         <p className="text-base font-medium text-gray-900">{selectedRegistration.fullName}</p>
                       </div>
                       <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-500">Guardian Name</label>
+                        <p className="text-base font-medium text-gray-900">{selectedRegistration.guardianName}</p>
+                      </div>
+                      <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-500">Age & Gender</label>
                         <p className="text-base font-medium text-gray-900 flex items-center gap-2">
-                          {selectedRegistration.age} years •
+                          {selectedRegistration.age} years
                           <span className="inline-flex items-center gap-1">
                             {selectedRegistration.gender === 'M' ? (
                               <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 8l4-4m0 0v4m0-4h-4" /></svg>
@@ -800,15 +834,38 @@ export default function RegistrationsPage() {
                     <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-500">Phone Number</label>
-                        <p className="text-base font-medium text-gray-900">{selectedRegistration.phoneNumber}</p>
+                        <p>
+                          <a
+                            href={`tel:${selectedRegistration.phoneNumber}`}
+                            className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
+                          >
+                            {selectedRegistration.phoneNumber}
+                          </a>
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-500">WhatsApp Number</label>
-                        <p className="text-base font-medium text-gray-900">{selectedRegistration.whatsappNumber}</p>
+                        <p>
+                          <a
+                            href={`https://wa.me/${selectedRegistration.whatsappNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
+                          >
+                            {selectedRegistration.whatsappNumber}
+                          </a>
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-500">Emergency Contact</label>
-                        <p className="text-base font-medium text-gray-900">{selectedRegistration.emergencyContact}</p>
+                        <p>
+                          <a
+                            href={`tel:${selectedRegistration.emergencyContact}`}
+                            className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
+                          >
+                            {selectedRegistration.emergencyContact}
+                          </a>
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-500">Pin Code</label>
@@ -917,8 +974,8 @@ export default function RegistrationsPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-500 hidden sm:inline">Status:</span>
                   <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-sm font-semibold ${selectedRegistration.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                      selectedRegistration.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
+                    selectedRegistration.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
                     }`}>
                     {selectedRegistration.status}
                   </span>

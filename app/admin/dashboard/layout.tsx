@@ -12,7 +12,7 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { id: 'notifications', label: 'Notification Subscriptions' },
+  // { id: 'notifications', label: 'Notification Subscriptions' },
   { id: 'registrations', label: 'User Registrations' },
   // Add more tabs here as needed
 ];
@@ -24,24 +24,26 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [activeTab, setActiveTab] = useState('notifications');
+  const [activeTab, setActiveTab] = useState('registrations');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Sync active tab with URL
   useEffect(() => {
-    if (pathname.includes('/admin/dashboard/registrations')) {
+    if (pathname.includes('/admin/dashboard')) {
       setActiveTab('registrations');
-    } else if (pathname.includes('/admin/dashboard')) {
-      setActiveTab('notifications');
     }
+    // } else if (pathname.includes('/admin/dashboard')) {
+    //   setActiveTab('notifications');
+    // }
     // Add more tab path checks as you add more tabs
   }, [pathname]);
 
   const handleTabClick = (tabId: string) => {
-    if (tabId === 'notifications') {
+    // if (tabId === 'notifications') {
+    //   router.push('/admin/dashboard');
+    // } else 
+    if (tabId === 'registrations') {
       router.push('/admin/dashboard');
-    } else if (tabId === 'registrations') {
-      router.push('/admin/dashboard/registrations');
     }
     setDrawerOpen(false); // Close drawer on mobile
     // No need to setActiveTab here, as the effect will update it based on the URL
