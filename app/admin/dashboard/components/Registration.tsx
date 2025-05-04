@@ -27,6 +27,7 @@ import { X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
+type RegistrationStatus = 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED';
 interface Registration {
     id: string;
     fullName: string;
@@ -424,50 +425,37 @@ export function Registration() {
         }
     };
 
-    type RegistrationStatus = 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED';
     const handleStatusChange = async (id: string, newStatus: RegistrationStatus, actionType?: string) => {
         setStatusActionLoading({ id, action: actionType || null });
         try {
             // Find the registration by id to get formType and aadharNumber
-            const reg = registrations.find(r => r.id === id);
-            if (!reg) throw new Error('Registration not found');
+            const regIndex = registrations.findIndex(r => r.id === id);
+            if (regIndex === -1) throw new Error('Registration not found');
+
+            // Update the status in the local state
+            const updatedRegistration = { ...registrations[regIndex], status: newStatus };
+
+            // Make the API call to update the status
             const response = await fetch(`/api/admin/registrations`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    formType: reg.formType,
-                    aadharNumber: reg.aadharNumber,
+                    formType: updatedRegistration.formType,
+                    aadharNumber: updatedRegistration.aadharNumber,
                     status: newStatus,
                 }),
             });
             if (!response.ok) throw new Error('Failed to update status');
-            // Refresh registrations and update selectedRegistration if dialog is open
-            const updatedList: Registration[] = await fetch('/api/admin/registrations').then(res => res.json());
-            setRegistrations(updatedList);
-            // If the current page is now empty (e.g., after status change), reset to page 1
-            const filteredAfterUpdate = [...updatedList]
-                .sort(sortRegistrations)
-                .filter((reg: Registration) => {
-                    if (categoryFilter !== 'ALL' && reg.formType !== categoryFilter) return false;
-                    if (statusFilter !== 'ALL' && reg.status !== statusFilter) return false;
-                    return true;
-                });
-            const newTotalPages = Math.ceil(filteredAfterUpdate.length / pageSize);
-            if (currentPage > newTotalPages && newTotalPages > 0) {
-                setCurrentPage(1);
-            }
-            if (isViewDialogOpen && selectedRegistration) {
-                const updated = updatedList.find((r: Registration) => r.id === selectedRegistration.id);
-                if (updated) setSelectedRegistration(updated);
-            }
-            // Now show the toast after UI is updated
-            setTimeout(() => {
-                toast.success('Status updated successfully');
-            }, 0);
-            setStatusActionLoading({ id: null, action: null });
+
+            // Show success toast
+            const updatedRegistrations = [...registrations];
+            updatedRegistrations[regIndex] = updatedRegistration;
+            setRegistrations(updatedRegistrations);
+            toast.success('Status updated successfully');
         } catch (error) {
             console.error('Error updating status:', error);
             toast.error('Failed to update status');
+        } finally {
             setStatusActionLoading({ id: null, action: null });
         }
     };
@@ -577,6 +565,12 @@ export function Registration() {
         setEditLoading(true);
         const aadharChanged = String(editForm.aadharNumber) !== String(selectedRegistration.aadharNumber);
         try {
+            // Find the registration by id to get formType and aadharNumber
+            const regIndex = registrations.findIndex(r => r.id === selectedRegistration.id);
+            if (regIndex === -1) throw new Error('Registration not found');
+            // Update the status in the local state
+            const updatedRegistration = { ...registrations[regIndex], ...editForm };
+            
             // 1. If new photo or aadhar file, upload to S3 using the same key
             if (newPhotoFile) {
                 const res = await fetch('/api/upload-url', {
@@ -653,13 +647,10 @@ export function Registration() {
                 if (!delRes.ok) {
                     throw new Error('Failed to delete old record');
                 }
-                toast.success('Aadhar number updated: new record created and old record deleted.');
-                setIsEditing(false);
-                setEditForm(null);
-                setEditErrors({});
-                setIsViewDialogOpen(false);
-                setNewPhotoFile(null); setNewPhotoPreview(null); setNewAadharFile(null); setNewAadharPreview(null); setImageErrors({});
-                fetchRegistrations();
+
+                const updatedRegistrations = [...registrations];
+                updatedRegistrations[regIndex] = updatedRegistration;
+                setRegistrations(updatedRegistrations);
             } else {
                 // PATCH as before
                 const res = await fetch(`/api/admin/registrations`, {
@@ -672,13 +663,18 @@ export function Registration() {
                     }),
                 });
                 if (!res.ok) throw new Error('Failed to update registration');
-                toast.success('Registration updated successfully');
-                setIsEditing(false);
-                setEditForm(null);
-                setEditErrors({});
-                setIsViewDialogOpen(false);
-                fetchRegistrations();
+
+                // Update the local state
+                const updatedRegistrations = [...registrations];
+                updatedRegistrations[regIndex] = updatedRegistration;
+                setRegistrations(updatedRegistrations);
             }
+
+            toast.success('Registration updated successfully');
+            setIsEditing(false);
+            setEditForm(null);
+            setEditErrors({});
+            setIsViewDialogOpen(false);
         } catch (e: unknown) {
             let message = 'Failed to update registration';
             if (e instanceof Error) message = e.message;

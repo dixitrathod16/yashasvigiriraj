@@ -139,7 +139,7 @@ export default function CheckStatusPage() {
         const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
         passportPhotoUrl = `${baseUrl}/api/proxy-image?key=${encodeURIComponent(registration.photoKey)}`;
       }
-      
+
       // Preload the passport photo to ensure it's available for PDF generation
       const photoPromise = new Promise((resolve) => {
         if (!passportPhotoUrl) {
@@ -448,13 +448,13 @@ export default function CheckStatusPage() {
                         {registrations.length} registration{registrations.length > 1 ? 's' : ''} found
                       </span>
                     </div>
-                    
+
                     <div className="space-y-4">
                       {registrations.map((registration) => {
                         const category = getCategoryDetails(registration.formType);
                         return (
-                          <div 
-                            key={registration.registrationId} 
+                          <div
+                            key={registration.registrationId}
                             className="border rounded-lg overflow-hidden bg-white/50 hover:bg-white/80 transition-colors"
                           >
                             <div className="p-4">
@@ -465,12 +465,10 @@ export default function CheckStatusPage() {
                                   <p className="text-sm text-gray-600">ID: {registration.registrationId}</p>
                                 </div>
                                 <div className="text-right">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                                    registration.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                                    registration.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                    'bg-yellow-100 text-yellow-800'
-                                  }`}>
-                                    {registration.status}
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${registration.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                      'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                    {registration.status === 'SHORTLISTED' ? 'PENDING' : registration.status}
                                   </span>
                                   <p className="text-xs text-gray-500 mt-1">
                                     {new Date(registration.lastUpdated).toLocaleString('en-IN', {
