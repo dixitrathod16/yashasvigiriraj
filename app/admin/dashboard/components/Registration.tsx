@@ -26,6 +26,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import ExcelJS from 'exceljs';
+import { Download } from 'lucide-react';
 
 type RegistrationStatus = 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED';
 interface Registration {
@@ -134,6 +136,8 @@ export function Registration() {
     const [newAadharFile, setNewAadharFile] = useState<File | null>(null);
     const [newAadharPreview, setNewAadharPreview] = useState<string | null>(null);
     const [imageErrors, setImageErrors] = useState<{ photo?: string; aadhar?: string }>({});
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+    const [exportLoading, setExportLoading] = useState(false);
 
     // Calculate totals per category
     const totals = {
@@ -768,6 +772,187 @@ export function Registration() {
     const handleClearPhoto = () => { setNewPhotoFile(null); setNewPhotoPreview(null); setImageErrors(e => ({ ...e, photo: undefined })); };
     const handleClearAadhar = () => { setNewAadharFile(null); setNewAadharPreview(null); setImageErrors(e => ({ ...e, aadhar: undefined })); };
 
+    // Utility: Convert webp Blob to jpeg base64 using canvas
+    // async function convertWebpToJpegBase64(webpBlob: Blob): Promise<string> {
+    //     return new Promise((resolve, reject) => {
+    //         const img = new window.Image();
+    //         img.onload = () => {
+    //             const canvas = document.createElement('canvas');
+    //             canvas.width = img.width;
+    //             canvas.height = img.height;
+    //             const ctx = canvas.getContext('2d');
+    //             if (!ctx) return reject(new Error('Canvas not supported'));
+    //             ctx.drawImage(img, 0, 0);
+    //             canvas.toBlob(
+    //                 (jpegBlob) => {
+    //                     if (!jpegBlob) return reject(new Error('JPEG conversion failed'));
+    //                     const reader = new FileReader();
+    //                     reader.onloadend = () => {
+    //                         const base64 = (reader.result as string).split(',')[1];
+    //                         resolve(base64);
+    //                     };
+    //                     reader.readAsDataURL(jpegBlob);
+    //                 },
+    //                 'image/jpeg',
+    //                 0.92
+    //             );
+    //         };
+    //         img.onerror = reject;
+    //         img.src = URL.createObjectURL(webpBlob);
+    //     });
+    // }
+
+    // Helper to fetch image as base64 from CloudFront, converting webp to jpeg if needed
+    // async function fetchImageAsBase64(url: string): Promise<{base64: string, mime: string} | null> {
+    //     try {
+    //         const res = await fetch(url);
+    //         if (!res.ok) return null;
+    //         const blob = await res.blob();
+    //         let mime = blob.type;
+    //         let base64: string;
+    //         if (mime === 'image/webp') {
+    //             base64 = await convertWebpToJpegBase64(blob);
+    //             mime = 'image/jpeg';
+    //         } else {
+    //             base64 = await new Promise<string>((resolve, reject) => {
+    //                 const reader = new FileReader();
+    //                 reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+    //                 reader.onerror = reject;
+    //                 reader.readAsDataURL(blob);
+    //             });
+    //         }
+    //         return { base64, mime };
+    //     } catch {
+    //         return null;
+    //     }
+    // }
+
+    // Excel export logic (optimized)
+    async function handleExport(type: 'all' | 'filtered') {
+        setExportLoading(true);
+        setIsExportDialogOpen(false);
+        try {
+            const dataToExport = type === 'all' ? registrations : filteredRegistrations;
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Registrations');
+            worksheet.columns = [
+                { header: 'ID', key: 'id', width: 18 },
+                { header: 'Full Name', key: 'fullName', width: 22 },
+                { header: 'Age', key: 'age', width: 8 },
+                { header: 'Gender', key: 'gender', width: 10 },
+                { header: 'Guardian Name', key: 'guardianName', width: 22 },
+                { header: 'Address', key: 'address', width: 30 },
+                { header: 'City', key: 'city', width: 16 },
+                { header: 'Pin Code', key: 'pinCode', width: 12 },
+                { header: 'Village', key: 'village', width: 16 },
+                { header: 'Aadhar Number', key: 'aadharNumber', width: 18 },
+                { header: 'Phone Number', key: 'phoneNumber', width: 16 },
+                { header: 'WhatsApp Number', key: 'whatsappNumber', width: 16 },
+                { header: 'Emergency Contact', key: 'emergencyContact', width: 18 },
+                { header: 'Existing Tapasya', key: 'existingTapasya', width: 18 },
+                { header: 'Linked Form', key: 'linkedForm', width: 18 },
+                { header: 'Previous Participation', key: 'hasParticipatedBefore', width: 16 },
+                { header: 'Form Type', key: 'formType', width: 10 },
+                { header: 'Created At', key: 'createdAt', width: 20 },
+                { header: 'Status', key: 'status', width: 14 },
+                // { header: 'Passport Photo', key: 'passportPhoto', width: 18 },
+                // { header: 'Aadhar Card', key: 'aadharCard', width: 18 },
+            ];
+            // Add rows (without images for now)
+            for (const reg of dataToExport) {
+                worksheet.addRow({
+                    ...reg,
+                    gender: reg.gender === 'M' ? 'Male' : 'Female',
+                    hasParticipatedBefore: reg.hasParticipatedBefore ? 'Yes' : 'No',
+                    // passportPhoto: '',
+                    // aadharCard: '',
+                });
+            }
+            // Fetch all images in parallel for speed
+            // const imagePromises = dataToExport.map(async (reg) => {
+            //     const photoUrl = `https://d3b13419yglo3r.cloudfront.net/${reg.photoKey}`;
+            //     const aadharUrl = `https://d3b13419yglo3r.cloudfront.net/${reg.aadharKey}`;
+            //     const [photo, aadhar] = await Promise.all([
+            //         fetchImageAsBase64(photoUrl),
+            //         fetchImageAsBase64(aadharUrl),
+            //     ]);
+            //     return { photo, aadhar };
+            // });
+            // const allImages = await Promise.all(imagePromises);
+            // Insert images in correct cells (col 20: passportPhoto, col 21: aadharCard)
+            // for (let i = 0; i < allImages.length; i++) {
+            //     const { photo, aadhar } = allImages[i];
+            //     // ExcelJS columns: T = 20, U = 21 (1-indexed), rows start at 2 (header is row 1)
+            //     const rowNum = i + 2;
+            //     if (photo) {
+            //         const imgId = workbook.addImage({
+            //             base64: photo.base64,
+            //             extension: 'jpeg',
+            //         });
+            //         worksheet.addImage(imgId, `T${rowNum}:T${rowNum}`);
+            //     }
+            //     if (aadhar) {
+            //         const imgId = workbook.addImage({
+            //             base64: aadhar.base64,
+            //             extension: 'jpeg',
+            //         });
+            //         worksheet.addImage(imgId, `U${rowNum}:U${rowNum}`);
+            //     }
+            // }
+            // Download
+            const buf = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `registrations_${type}_${new Date().toISOString().slice(0,10)}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            toast.error('Failed to export Excel', e);
+        } finally {
+            setExportLoading(false);
+        }
+    }
+
+    // Export button UI
+    const exportButton = (
+        <div className="relative inline-block">
+            <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                onClick={() => setIsExportDialogOpen(true)}
+                disabled={exportLoading}
+            >
+                {exportLoading ? (
+                    <>
+                        <svg className="animate-spin w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                        Preparing...
+                    </>
+                ) : (
+                    <>
+                        <Download className="w-4 h-4" />
+                        Export
+                    </>
+                )}
+            </Button>
+            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                <DialogContent className="w-[320px] max-w-[95vw]">
+                    <DialogHeader>
+                        <DialogTitle>Export Registrations</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4 mt-2">
+                        <Button onClick={() => handleExport('all')} disabled={exportLoading} className="w-full">Complete Data Export</Button>
+                        <Button onClick={() => handleExport('filtered')} disabled={exportLoading} className="w-full">Current Filtered Data Export</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[40vh] w-full">
@@ -1051,6 +1236,7 @@ export function Registration() {
 
     const mainContent = isMobile ? (
         <div className="space-y-2">
+            <div className="flex justify-end mb-2">{exportButton}</div>
             {filterBar}
             {filterChips}
             {/* Mobile Sorting Controls */}
@@ -1189,6 +1375,7 @@ export function Registration() {
             <div className="flex flex-col gap-2 mb-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-xl font-semibold">User Registrations</h2>
+                    {exportButton}
                 </div>
                 {filterBar}
                 {filterChips}
