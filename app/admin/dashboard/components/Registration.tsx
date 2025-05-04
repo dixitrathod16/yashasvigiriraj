@@ -716,7 +716,7 @@ export function Registration() {
     );
 
     const mainContent = isMobile ? (
-        <div className="space-y-4 p-2 mt-2">
+        <div className="space-y-2">
             {filterBar}
             {filterChips}
             {/* Mobile Sorting Controls */}
@@ -918,7 +918,7 @@ export function Registration() {
             {/* View Details Dialog */}
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
                 <DialogContent className="max-w-[95vw] w-full max-h-[95vh] min-h-[60vh] overflow-y-auto p-0">
-                    <DialogHeader className="px-8 pt-7 pb-3 border-b bg-gradient-to-r from-primary/5 to-secondary/5 rounded-t-lg sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
+                    <DialogHeader className="px-8 pt-5 pb-3 border-b bg-gradient-to-r from-primary/5 to-secondary/5 rounded-t-lg sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
                         <div className="flex items-center justify-between">
                             <DialogTitle className="flex items-center gap-2 text-xl font-bold text-primary">
                                 <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
@@ -940,11 +940,11 @@ export function Registration() {
                     {selectedRegistration && (
                         <div className="bg-white/95">
                             {/* Main Content Grid */}
-                            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr,1.8fr] gap-6 p-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr,1.8fr] gap-6 p-4">
                                 {/* Left Column - Registration Details */}
-                                <div className="space-y-6 max-w-2xl">
+                                <div className="space-y-1 max-w-2xl">
                                     {/* Top: Category and Registration ID */}
-                                    <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b">
+                                    <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b">
                                         <div className="flex items-center gap-2">
                                             <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-semibold text-sm">
                                                 {categories.find(c => c.id === selectedRegistration.formType)?.titleEnglish}
@@ -958,7 +958,7 @@ export function Registration() {
                                     </div>
 
                                     {/* Personal Information */}
-                                    <div className="space-y-4">
+                                    <div className="space-y-2">
                                         <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                             <div className="space-y-2">
@@ -1003,7 +1003,7 @@ export function Registration() {
                                     </div>
 
                                     {/* Contact Information */}
-                                    <div className="space-y-4 pt-4 border-t">
+                                    <div className="space-y-2 pt-2 border-t">
                                         <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                             <div className="space-y-2">
@@ -1063,7 +1063,7 @@ export function Registration() {
                                     </div>
 
                                     {/* Additional Information */}
-                                    <div className="space-y-4 pt-4 border-t">
+                                    <div className="space-y-2 pt-2 border-t">
                                         <h3 className="text-lg font-semibold text-gray-900">Additional Information</h3>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                             <div className="space-y-2">
@@ -1079,12 +1079,12 @@ export function Registration() {
                                 </div>
 
                                 {/* Right Column - Documents */}
-                                <div className="space-y-6 lg:border-l lg:pl-6">
-                                    <div className="space-y-6">
+                                <div className="space-y-2 lg:border-l lg:pl-6">
+                                    <div className="space-y-2">
                                         <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                             {/* Passport Photo */}
-                                            <div className="space-y-3">
+                                            <div className="space-y-1">
                                                 <label className="text-sm font-medium text-gray-500">Passport Photo</label>
                                                 <div
                                                     className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
@@ -1113,7 +1113,7 @@ export function Registration() {
                                             </div>
 
                                             {/* Aadhar Card */}
-                                            <div className="space-y-3">
+                                            <div className="space-y-1">
                                                 <label className="text-sm font-medium text-gray-500">Aadhar Card</label>
                                                 <div
                                                     className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
