@@ -910,8 +910,9 @@ export function Registration() {
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
-        } catch (e) {
-            toast.error('Failed to export Excel', e);
+        } catch (e: unknown) {
+            console.error(e);
+            toast.error('Failed to export Excel');
         } finally {
             setExportLoading(false);
         }
