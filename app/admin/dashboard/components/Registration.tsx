@@ -24,6 +24,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { X } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Registration {
     id: string;
@@ -46,7 +48,7 @@ interface Registration {
     aadharKey: string;
     formType: 'SAN' | 'CHA' | 'NAV';
     createdAt: string;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    status: 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED';
 }
 
 // Categories data
@@ -86,9 +88,13 @@ export function Registration() {
     const [isMobile, setIsMobile] = useState(false);
     const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState<Partial<Registration> | null>(null);
+    const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+    const [editLoading, setEditLoading] = useState(false);
+    const [statusActionLoading, setStatusActionLoading] = useState<{ id: string | null, action: string | null }>({ id: null, action: null });
     const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'SAN' | 'CHA' | 'NAV'>('ALL');
-    const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED'>('ALL');
+    const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'SHORTLISTED' | 'APPROVED'>('ALL');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const pageSizeOptions = [5, 10, 20, 50];
@@ -121,6 +127,12 @@ export function Registration() {
     });
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const [gotoPageInput, setGotoPageInput] = useState<string>('');
+    // Add state for new image files and previews
+    const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
+    const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
+    const [newAadharFile, setNewAadharFile] = useState<File | null>(null);
+    const [newAadharPreview, setNewAadharPreview] = useState<string | null>(null);
+    const [imageErrors, setImageErrors] = useState<{ photo?: string; aadhar?: string }>({});
 
     // Calculate totals per category
     const totals = {
@@ -159,12 +171,10 @@ export function Registration() {
     const sortedRegistrations = [...registrations]
         .sort(sortRegistrations);
 
-    // Advanced filter logic
-    const filteredRegistrations = sortedRegistrations.filter((reg: Registration) => {
-        // Category and status filter (legacy, for buttons)
+    // Base filtered list: category + advanced filters (but NOT status)
+    const baseFilteredRegistrations = sortedRegistrations.filter((reg: Registration) => {
         if (categoryFilter !== 'ALL' && reg.formType !== categoryFilter) return false;
-        if (statusFilter !== 'ALL' && reg.status !== statusFilter) return false;
-        // Advanced filters
+        // Advanced filters (same as before, but skip status)
         if (
             advancedFilters.id &&
             !reg.id
@@ -294,6 +304,12 @@ export function Registration() {
         return true;
     });
 
+    // Now, filteredRegistrations applies the status filter to the base list
+    const filteredRegistrations = baseFilteredRegistrations.filter((reg: Registration) => {
+        if (statusFilter !== 'ALL' && reg.status !== statusFilter) return false;
+        return true;
+    });
+
     // Pagination logic
     const totalPages = Math.ceil(filteredRegistrations.length / pageSize);
     const paginatedRegistrations = filteredRegistrations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -306,13 +322,15 @@ export function Registration() {
 
     // Status filter buttons with counts based on current category filter
     const statusCounts = {
-        ALL: filteredRegistrations.length,
-        PENDING: filteredRegistrations.filter(reg => reg.status === 'PENDING').length,
-        APPROVED: filteredRegistrations.filter(reg => reg.status === 'APPROVED').length,
+        ALL: baseFilteredRegistrations.length,
+        PENDING: baseFilteredRegistrations.filter(reg => reg.status === 'PENDING').length,
+        SHORTLISTED: baseFilteredRegistrations.filter(reg => reg.status === 'SHORTLISTED').length,
+        APPROVED: baseFilteredRegistrations.filter(reg => reg.status === 'APPROVED').length,
     };
     const statusButtons = [
         { id: 'ALL', label: 'All', count: statusCounts.ALL },
         { id: 'PENDING', label: 'Pending', count: statusCounts.PENDING },
+        { id: 'SHORTLISTED', label: 'Shortlisted', count: statusCounts.SHORTLISTED },
         { id: 'APPROVED', label: 'Approved', count: statusCounts.APPROVED },
     ];
 
@@ -406,21 +424,51 @@ export function Registration() {
         }
     };
 
-    const handleStatusChange = async (id: string, newStatus: 'APPROVED' | 'REJECTED') => {
+    type RegistrationStatus = 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED';
+    const handleStatusChange = async (id: string, newStatus: RegistrationStatus, actionType?: string) => {
+        setStatusActionLoading({ id, action: actionType || null });
         try {
-            const response = await fetch(`/api/admin/registrations/${id}`, {
+            // Find the registration by id to get formType and aadharNumber
+            const reg = registrations.find(r => r.id === id);
+            if (!reg) throw new Error('Registration not found');
+            const response = await fetch(`/api/admin/registrations`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus }),
+                body: JSON.stringify({
+                    formType: reg.formType,
+                    aadharNumber: reg.aadharNumber,
+                    status: newStatus,
+                }),
             });
-
             if (!response.ok) throw new Error('Failed to update status');
-
-            toast.success(`Registration ${newStatus.toLowerCase()} successfully`);
-            fetchRegistrations();
+            // Refresh registrations and update selectedRegistration if dialog is open
+            const updatedList: Registration[] = await fetch('/api/admin/registrations').then(res => res.json());
+            setRegistrations(updatedList);
+            // If the current page is now empty (e.g., after status change), reset to page 1
+            const filteredAfterUpdate = [...updatedList]
+                .sort(sortRegistrations)
+                .filter((reg: Registration) => {
+                    if (categoryFilter !== 'ALL' && reg.formType !== categoryFilter) return false;
+                    if (statusFilter !== 'ALL' && reg.status !== statusFilter) return false;
+                    return true;
+                });
+            const newTotalPages = Math.ceil(filteredAfterUpdate.length / pageSize);
+            if (currentPage > newTotalPages && newTotalPages > 0) {
+                setCurrentPage(1);
+            }
+            if (isViewDialogOpen && selectedRegistration) {
+                const updated = updatedList.find((r: Registration) => r.id === selectedRegistration.id);
+                if (updated) setSelectedRegistration(updated);
+            }
+            // Now show the toast after UI is updated
+            setTimeout(() => {
+                toast.success('Status updated successfully');
+            }, 0);
+            setStatusActionLoading({ id: null, action: null });
         } catch (error) {
             console.error('Error updating status:', error);
             toast.error('Failed to update status');
+            setStatusActionLoading({ id: null, action: null });
         }
     };
 
@@ -430,9 +478,297 @@ export function Registration() {
     };
 
     const handleEdit = (registration: Registration) => {
-        setSelectedRegistration(registration);
-        setIsEditDialogOpen(true);
+        setEditForm({ ...registration });
+        setEditErrors({});
+        setIsEditing(true);
     };
+
+    // Validation logic (adapted from register/page.tsx)
+    function validateEditForm(form: Partial<Registration>): Record<string, string> {
+        const errors: Record<string, string> = {};
+        if (!form.fullName?.trim()) {
+            errors.fullName = 'Full name is required';
+        } else if (form.fullName.trim().length < 3) {
+            errors.fullName = 'Name should be at least 3 characters';
+        } else if (!/^[a-zA-Z ]+$/.test(form.fullName)) {
+            errors.fullName = 'Name should contain only letters and spaces';
+        }
+        if (!form.age) {
+            errors.age = 'Age is required';
+        } else if (parseInt(form.age) < 1 || parseInt(form.age) > 120) {
+            errors.age = 'Age should be between 1 and 120';
+        }
+        if (!form.guardianName?.trim()) {
+            errors.guardianName = "Father's/Husband's name is required";
+        } else if (form.guardianName.trim().length < 3) {
+            errors.guardianName = 'Name should be at least 3 characters';
+        } else if (!/^[a-zA-Z ]+$/.test(form.guardianName)) {
+            errors.guardianName = 'Name should contain only letters and spaces';
+        }
+        if (!form.address?.trim()) {
+            errors.address = 'Address is required';
+        } else if (form.address.trim().length < 5) {
+            errors.address = 'Address should be detailed';
+        }
+        if (!form.city?.trim()) {
+            errors.city = 'City is required';
+        }
+        if (!form.pinCode?.trim()) {
+            errors.pinCode = 'Pin code is required';
+        } else if (!/^\d{6}$/.test(form.pinCode.trim())) {
+            errors.pinCode = 'Pin code should be 6 digits';
+        }
+        if (!form.village?.trim()) {
+            errors.village = 'Village is required';
+        }
+        if (!form.aadharNumber) {
+            errors.aadharNumber = 'Aadhar number is required';
+        } else if (!/^\d{12}$/.test(form.aadharNumber.toString())) {
+            errors.aadharNumber = 'Aadhar number should be 12 digits';
+        }
+        if (!form.phoneNumber) {
+            errors.phoneNumber = 'Phone number is required';
+        } else if (!/^\d{10}$/.test(form.phoneNumber.toString())) {
+            errors.phoneNumber = 'Phone number should be 10 digits';
+        }
+        if (!form.whatsappNumber) {
+            errors.whatsappNumber = 'WhatsApp number is required';
+        } else if (!/^\d{10}$/.test(form.whatsappNumber.toString())) {
+            errors.whatsappNumber = 'WhatsApp number should be 10 digits';
+        }
+        if (!form.emergencyContact) {
+            errors.emergencyContact = 'Emergency number is required';
+        } else if (!/^\d{10}$/.test(form.emergencyContact.toString())) {
+            errors.emergencyContact = 'Emergency number should be 10 digits';
+        } else if (Number(form.emergencyContact) !== Number('9999999999') && form.emergencyContact === form.phoneNumber) {
+            errors.emergencyContact = 'Emergency number should be different from mobile number';
+        }
+        // No validation for optional fields
+        return errors;
+    }
+
+    // Edit logic
+    const handleEditCancel = () => {
+        setIsEditing(false);
+        setEditForm(null);
+        setEditErrors({});
+    };
+    const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        let newValue: string | boolean = value;
+        if (type === 'checkbox' && e.target instanceof HTMLInputElement) {
+            newValue = e.target.checked;
+        }
+        setEditForm(f => ({
+            ...f!,
+            [name]: newValue,
+        }));
+        setEditErrors(errors => {
+            const newErrors = { ...errors };
+            delete newErrors[name];
+            return newErrors;
+        });
+    };
+    const handleEditSave = async () => {
+        if (!editForm || !selectedRegistration) return;
+        const errors = validateEditForm(editForm);
+        setEditErrors(errors);
+        if (Object.keys(errors).length > 0) return;
+        setEditLoading(true);
+        const aadharChanged = String(editForm.aadharNumber) !== String(selectedRegistration.aadharNumber);
+        try {
+            // 1. If new photo or aadhar file, upload to S3 using the same key
+            if (newPhotoFile) {
+                const res = await fetch('/api/upload-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        files: [{
+                            fileType: newPhotoFile.type,
+                            uploadType: 'photo',
+                            key: selectedRegistration.photoKey,
+                        }],
+                    }),
+                });
+                if (!res.ok) throw new Error('Failed to get upload URL for photo');
+                const { uploadUrls } = await res.json();
+                const { url } = uploadUrls[0];
+                const uploadRes = await fetch(url, {
+                    method: 'PUT',
+                    body: newPhotoFile,
+                    headers: { 'Content-Type': newPhotoFile.type },
+                });
+                if (!uploadRes.ok) throw new Error('Failed to upload new photo');
+            }
+            if (newAadharFile) {
+                const res = await fetch('/api/upload-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        files: [{
+                            fileType: newAadharFile.type,
+                            uploadType: 'aadhar',
+                            key: selectedRegistration.aadharKey,
+                        }],
+                    }),
+                });
+                if (!res.ok) throw new Error('Failed to get upload URL for aadhar');
+                const { uploadUrls } = await res.json();
+                const { url } = uploadUrls[0];
+                const uploadRes = await fetch(url, {
+                    method: 'PUT',
+                    body: newAadharFile,
+                    headers: { 'Content-Type': newAadharFile.type },
+                });
+                if (!uploadRes.ok) throw new Error('Failed to upload new aadhar card');
+            }
+            // 2. Continue with PATCH/POST/DELETE as before
+            if (aadharChanged) {
+                // 1. Create new record with original id (preserve registration ID)
+                const res = await fetch('/api/admin/registrations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...editForm,
+                        id: selectedRegistration.id, // preserve original registration ID
+                        aadharNumber: editForm.aadharNumber,
+                        formType: editForm.formType,
+                        status: selectedRegistration.status,
+                        createdAt: selectedRegistration.createdAt,
+                    }),
+                });
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Failed to create new record');
+                }
+                // 2. Delete old record
+                const delRes = await fetch('/api/admin/registrations', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        formType: selectedRegistration.formType,
+                        aadharNumber: selectedRegistration.aadharNumber,
+                    }),
+                });
+                if (!delRes.ok) {
+                    throw new Error('Failed to delete old record');
+                }
+                toast.success('Aadhar number updated: new record created and old record deleted.');
+                setIsEditing(false);
+                setEditForm(null);
+                setEditErrors({});
+                setIsViewDialogOpen(false);
+                setNewPhotoFile(null); setNewPhotoPreview(null); setNewAadharFile(null); setNewAadharPreview(null); setImageErrors({});
+                fetchRegistrations();
+            } else {
+                // PATCH as before
+                const res = await fetch(`/api/admin/registrations`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...editForm,
+                        formType: editForm.formType,
+                        aadharNumber: editForm.aadharNumber,
+                    }),
+                });
+                if (!res.ok) throw new Error('Failed to update registration');
+                toast.success('Registration updated successfully');
+                setIsEditing(false);
+                setEditForm(null);
+                setEditErrors({});
+                setIsViewDialogOpen(false);
+                fetchRegistrations();
+            }
+        } catch (e: unknown) {
+            let message = 'Failed to update registration';
+            if (e instanceof Error) message = e.message;
+            toast.error(message);
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
+    // Utility for image validation/compression (from register/page.tsx)
+    async function processImageFile({ file, setPreview, setFile, setError, fieldName }: {
+        file: File | null,
+        setPreview: (url: string | null) => void,
+        setFile: (file: File | null) => void,
+        setError: (cb: (prev: Record<string, string | undefined>) => Record<string, string | undefined>) => void,
+        fieldName: 'photo' | 'aadhar',
+    }) {
+        if (!file) {
+            setPreview(null);
+            setFile(null);
+            setError(prev => ({ ...prev, [fieldName]: undefined }));
+            return;
+        }
+        let fileType = file.type.toLowerCase();
+        let workingFile = file;
+        if (fileType === 'image/heic' || fileType === 'image/heif') {
+            try {
+                const heic2any = (await import('heic2any')).default;
+                const convertedBlob = await heic2any({ blob: file, toType: 'image/webp', quality: 0.85 });
+                const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                workingFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.webp'), { type: 'image/webp' });
+                fileType = 'image/webp';
+            } catch {
+                setError(prev => ({ ...prev, [fieldName]: 'Could not convert HEIC/HEIF image. Please use JPG, PNG, or WEBP.' }));
+                setPreview(null);
+                setFile(null);
+                return;
+            }
+        }
+        if (!['image/jpeg', 'image/png', 'image/jpg', 'image/webp'].includes(fileType)) {
+            setError(prev => ({ ...prev, [fieldName]: 'Please upload a valid image file (JPG, PNG, WEBP)' }));
+            setPreview(null);
+            setFile(null);
+            return;
+        }
+        if (workingFile.size > 10 * 1024 * 1024) {
+            setError(prev => ({ ...prev, [fieldName]: 'File size should be less than 10mb before compression' }));
+            setPreview(null);
+            setFile(null);
+            return;
+        }
+        try {
+            const imageCompression = (await import('browser-image-compression')).default;
+            const initialQuality = workingFile.size < 2 * 1024 * 1024 ? 0.95 : 0.85;
+            const options = { maxSizeMB: 4, maxWidthOrHeight: 1800, useWebWorker: true, initialQuality, fileType: 'image/webp' };
+            const compressedFile = await imageCompression(workingFile, options);
+            if (compressedFile.size > 6 * 1024 * 1024) {
+                setError(prev => ({ ...prev, [fieldName]: `Compressed ${fieldName === 'photo' ? 'photo' : 'Aadhar card'} is still larger than 10mb.` }));
+                setPreview(null);
+                setFile(null);
+                return;
+            }
+            setError(prev => ({ ...prev, [fieldName]: undefined }));
+            setFile(compressedFile);
+            const reader = new FileReader();
+            reader.onload = () => { if (reader.result) setPreview(reader.result as string); };
+            reader.onerror = () => {
+                setError(prev => ({ ...prev, [fieldName]: 'Error reading the file' }));
+                setPreview(null);
+                setFile(null);
+            };
+            reader.readAsDataURL(compressedFile);
+        } catch {
+            setError(prev => ({ ...prev, [fieldName]: 'Error compressing the image' }));
+            setPreview(null);
+            setFile(null);
+        }
+    }
+
+    // Handlers for file input
+    const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        await processImageFile({ file, setPreview: setNewPhotoPreview, setFile: setNewPhotoFile, setError: setImageErrors, fieldName: 'photo' });
+    };
+    const handleAadharFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        await processImageFile({ file, setPreview: setNewAadharPreview, setFile: setNewAadharFile, setError: setImageErrors, fieldName: 'aadhar' });
+    };
+    const handleClearPhoto = () => { setNewPhotoFile(null); setNewPhotoPreview(null); setImageErrors(e => ({ ...e, photo: undefined })); };
+    const handleClearAadhar = () => { setNewAadharFile(null); setNewAadharPreview(null); setImageErrors(e => ({ ...e, aadhar: undefined })); };
 
     if (loading) {
         return (
@@ -785,14 +1121,66 @@ export function Registration() {
                         >
                             View Details
                         </Button>
+                        {reg.status === 'PENDING' && (
                         <Button
                             size="sm"
-                            variant={reg.status === 'APPROVED' ? 'outline' : 'default'}
-                            onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'APPROVED'); }}
-                            disabled={reg.status === 'APPROVED'}
-                        >
-                            Approve
+                                variant="default"
+                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'SHORTLISTED', 'shortlist'); }}
+                                disabled={statusActionLoading.id === reg.id}
+                            >
+                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'shortlist' ? (
+                                    <span className="flex items-center gap-2">
+                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                        Shortlisting...
+                                    </span>
+                                ) : 'Shortlist'}
                         </Button>
+                        )}
+                        {reg.status === 'SHORTLISTED' && (
+                            <Button
+                                size="sm"
+                                variant="default"
+                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'APPROVED', 'approve'); }}
+                                disabled={statusActionLoading.id === reg.id}
+                            >
+                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'approve' ? (
+                                    <span className="flex items-center gap-2">
+                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                        Approving...
+                                    </span>
+                                ) : 'Approve'}
+                            </Button>
+                        )}
+                        {reg.status === 'SHORTLISTED' && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'PENDING', 'undo-shortlist'); }}
+                                disabled={statusActionLoading.id === reg.id}
+                            >
+                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'undo-shortlist' ? (
+                                    <span className="flex items-center gap-2">
+                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                        Undoing...
+                                    </span>
+                                ) : 'Undo Shortlist'}
+                            </Button>
+                        )}
+                        {reg.status === 'APPROVED' && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'SHORTLISTED', 'undo-approve'); }}
+                                disabled={statusActionLoading.id === reg.id}
+                            >
+                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'undo-approve' ? (
+                                    <span className="flex items-center gap-2">
+                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                        Undoing...
+                                    </span>
+                                ) : 'Undo Approve'}
+                            </Button>
+                        )}
                     </div>
                 </Card>
             ))}
@@ -893,14 +1281,66 @@ export function Registration() {
                                         >
                                             View Details
                                         </Button>
+                                        {reg.status === 'PENDING' && (
                                         <Button
                                             size="sm"
-                                            variant={reg.status === 'APPROVED' ? 'outline' : 'default'}
-                                            onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'APPROVED'); }}
-                                            disabled={reg.status === 'APPROVED'}
-                                        >
-                                            Approve
+                                                variant="default"
+                                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'SHORTLISTED', 'shortlist'); }}
+                                                disabled={statusActionLoading.id === reg.id}
+                                            >
+                                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'shortlist' ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                        Shortlisting...
+                                                    </span>
+                                                ) : 'Shortlist'}
                                         </Button>
+                                        )}
+                                        {reg.status === 'SHORTLISTED' && (
+                                            <Button
+                                                size="sm"
+                                                variant="default"
+                                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'APPROVED', 'approve'); }}
+                                                disabled={statusActionLoading.id === reg.id}
+                                            >
+                                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'approve' ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                        Approving...
+                                                    </span>
+                                                ) : 'Approve'}
+                                            </Button>
+                                        )}
+                                        {reg.status === 'SHORTLISTED' && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'PENDING', 'undo-shortlist'); }}
+                                                disabled={statusActionLoading.id === reg.id}
+                                            >
+                                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'undo-shortlist' ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                        Undoing...
+                                                    </span>
+                                                ) : 'Undo Shortlist'}
+                                            </Button>
+                                        )}
+                                        {reg.status === 'APPROVED' && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'SHORTLISTED', 'undo-approve'); }}
+                                                disabled={statusActionLoading.id === reg.id}
+                                            >
+                                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'undo-approve' ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                        Undoing...
+                                                    </span>
+                                                ) : 'Undo Approve'}
+                                            </Button>
+                                        )}
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -928,7 +1368,7 @@ export function Registration() {
                                 variant="ghost"
                                 size="icon"
                                 className="rounded-full hover:bg-gray-100"
-                                onClick={() => setIsViewDialogOpen(false)}
+                                onClick={() => { setIsViewDialogOpen(false); setIsEditing(false); setEditForm(null); setEditErrors({}); }}
                             >
                                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -961,16 +1401,38 @@ export function Registration() {
                                     <div className="space-y-2">
                                         <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            {/* Full Name */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Full Name</label>
+                                                <Label className="text-sm font-medium text-gray-500">Full Name</Label>
+                                                {isEditing ? (
+                                                    <Input name="fullName" value={editForm?.fullName || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900">{selectedRegistration.fullName}</p>
+                                                )}
+                                                {editErrors.fullName && <p className="text-xs text-red-500">{editErrors.fullName}</p>}
                                             </div>
+                                            {/* Guardian Name */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Guardian Name</label>
+                                                <Label className="text-sm font-medium text-gray-500">Guardian Name</Label>
+                                                {isEditing ? (
+                                                    <Input name="guardianName" value={editForm?.guardianName || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900">{selectedRegistration.guardianName}</p>
+                                                )}
+                                                {editErrors.guardianName && <p className="text-xs text-red-500">{editErrors.guardianName}</p>}
                                             </div>
+                                            {/* Age & Gender */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Age & Gender</label>
+                                                <Label className="text-sm font-medium text-gray-500">Age & Gender</Label>
+                                                {isEditing ? (
+                                                    <div className="flex gap-2 items-center">
+                                                        <Input name="age" type="number" value={editForm?.age || ''} onChange={handleEditChange} className="w-20" />
+                                                        <select name="gender" value={editForm?.gender || 'M'} onChange={handleEditChange} className="border rounded px-2 py-1 text-sm">
+                                                            <option value="M">Male</option>
+                                                            <option value="F">Female</option>
+                                                        </select>
+                                                    </div>
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900 flex items-center gap-2">
                                                     {selectedRegistration.age} years
                                                     <span className="inline-flex items-center gap-1">
@@ -982,21 +1444,44 @@ export function Registration() {
                                                         {selectedRegistration.gender === 'M' ? 'Male' : 'Female'}
                                                     </span>
                                                 </p>
+                                                )}
+                                                {editErrors.age && <p className="text-xs text-red-500">{editErrors.age}</p>}
                                             </div>
+                                            {/* Aadhar Number (editable in edit) */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Aadhar Number</label>
+                                                <Label className="text-sm font-medium text-gray-500">Aadhar Number</Label>
+                                                {isEditing ? (
+                                                    <Input
+                                                        name="aadharNumber"
+                                                        type="number"
+                                                        value={editForm?.aadharNumber?.toString() || ''}
+                                                        onChange={handleEditChange}
+                                                        className={editErrors.aadharNumber ? 'border-red-500' : ''}
+                                                    />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900">{selectedRegistration.aadharNumber}</p>
+                                                )}
+                                                {editErrors.aadharNumber && <p className="text-xs text-red-500">{editErrors.aadharNumber}</p>}
                                             </div>
+                                            {/* Previous Participation */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Previous Participation</label>
+                                                <Label className="text-sm font-medium text-gray-500">Previous Participation</Label>
+                                                {isEditing ? (
+                                                    <select name="hasParticipatedBefore" value={editForm?.hasParticipatedBefore ? 'true' : 'false'} onChange={e => setEditForm(f => ({ ...f!, hasParticipatedBefore: e.target.value === 'true' }))} className="border rounded px-2 py-1 text-sm">
+                                                        <option value="true">Yes</option>
+                                                        <option value="false">No</option>
+                                                    </select>
+                                                ) : (
                                                 <p className="text-base font-medium">
                                                     <span className={`inline-block px-2 py-0.5 rounded text-sm font-semibold ${selectedRegistration.hasParticipatedBefore ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                                                         {selectedRegistration.hasParticipatedBefore ? 'Yes' : 'No'}
                                                     </span>
                                                 </p>
+                                                )}
                                             </div>
+                                            {/* Registration Date (not editable) */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Registration Date</label>
+                                                <Label className="text-sm font-medium text-gray-500">Registration Date</Label>
                                                 <p className="text-base font-medium text-gray-900">{new Date(selectedRegistration.createdAt).toLocaleString()}</p>
                                             </div>
                                         </div>
@@ -1006,8 +1491,12 @@ export function Registration() {
                                     <div className="space-y-2 pt-2 border-t">
                                         <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            {/* Phone Number */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Phone Number</label>
+                                                <Label className="text-sm font-medium text-gray-500">Phone Number</Label>
+                                                {isEditing ? (
+                                                    <Input name="phoneNumber" value={editForm?.phoneNumber || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p>
                                                     <a
                                                         href={`https://wa.me/${selectedRegistration.whatsappNumber}`}
@@ -1018,9 +1507,16 @@ export function Registration() {
                                                         {selectedRegistration.phoneNumber}
                                                     </a>
                                                 </p>
+
+                                                )}
+                                                {editErrors.phoneNumber && <p className="text-xs text-red-500">{editErrors.phoneNumber}</p>}
                                             </div>
+                                            {/* WhatsApp Number */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">WhatsApp Number</label>
+                                                <Label className="text-sm font-medium text-gray-500">WhatsApp Number</Label>
+                                                {isEditing ? (
+                                                    <Input name="whatsappNumber" value={editForm?.whatsappNumber || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p>
                                                     <a
                                                         href={`https://wa.me/${selectedRegistration.whatsappNumber}`}
@@ -1031,9 +1527,15 @@ export function Registration() {
                                                         {selectedRegistration.whatsappNumber}
                                                     </a>
                                                 </p>
+                                                )}
+                                                {editErrors.whatsappNumber && <p className="text-xs text-red-500">{editErrors.whatsappNumber}</p>}
                                             </div>
+                                            {/* Emergency Contact */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Emergency Contact</label>
+                                                <Label className="text-sm font-medium text-gray-500">Emergency Contact</Label>
+                                                {isEditing ? (
+                                                    <Input name="emergencyContact" value={editForm?.emergencyContact || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p>
                                                     <a
                                                         href={`tel:${selectedRegistration.emergencyContact}`}
@@ -1042,22 +1544,49 @@ export function Registration() {
                                                         {selectedRegistration.emergencyContact}
                                                     </a>
                                                 </p>
+
+                                                )}
+                                                {editErrors.emergencyContact && <p className="text-xs text-red-500">{editErrors.emergencyContact}</p>}
                                             </div>
+                                            {/* Pin Code */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Pin Code</label>
+                                                <Label className="text-sm font-medium text-gray-500">Pin Code</Label>
+                                                {isEditing ? (
+                                                    <Input name="pinCode" value={editForm?.pinCode || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900">{selectedRegistration.pinCode}</p>
+                                                )}
+                                                {editErrors.pinCode && <p className="text-xs text-red-500">{editErrors.pinCode}</p>}
                                             </div>
+                                            {/* City */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">City</label>
+                                                <Label className="text-sm font-medium text-gray-500">City</Label>
+                                                {isEditing ? (
+                                                    <Input name="city" value={editForm?.city || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900">{selectedRegistration.city}</p>
+                                                )}
+                                                {editErrors.city && <p className="text-xs text-red-500">{editErrors.city}</p>}
                                             </div>
+                                            {/* Village */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Village</label>
+                                                <Label className="text-sm font-medium text-gray-500">Village</Label>
+                                                {isEditing ? (
+                                                    <Input name="village" value={editForm?.village || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900">{selectedRegistration.village}</p>
+                                                )}
+                                                {editErrors.village && <p className="text-xs text-red-500">{editErrors.village}</p>}
                                             </div>
+                                            {/* Full Address */}
                                             <div className="space-y-2 col-span-2">
-                                                <label className="text-sm font-medium text-gray-500">Full Address</label>
+                                                <Label className="text-sm font-medium text-gray-500">Full Address</Label>
+                                                {isEditing ? (
+                                                    <Textarea name="address" value={editForm?.address || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900 whitespace-pre-line">{selectedRegistration.address}</p>
+                                                )}
+                                                {editErrors.address && <p className="text-xs text-red-500">{editErrors.address}</p>}
                                             </div>
                                         </div>
                                     </div>
@@ -1066,26 +1595,59 @@ export function Registration() {
                                     <div className="space-y-2 pt-2 border-t">
                                         <h3 className="text-lg font-semibold text-gray-900">Additional Information</h3>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            {/* Linked Form */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Linked Form</label>
+                                                <Label className="text-sm font-medium text-gray-500">Linked Form</Label>
+                                                {isEditing ? (
+                                                    <Input name="linkedForm" value={editForm?.linkedForm || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900">{selectedRegistration.linkedForm || 'Not Available'}</p>
+                                                )}
                                             </div>
+                                            {/* Existing Tapasya */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-500">Existing Tapasya</label>
+                                                <Label className="text-sm font-medium text-gray-500">Existing Tapasya</Label>
+                                                {isEditing ? (
+                                                    <Input name="existingTapasya" value={editForm?.existingTapasya || ''} onChange={handleEditChange} />
+                                                ) : (
                                                 <p className="text-base font-medium text-gray-900">{selectedRegistration.existingTapasya || 'Not Available'}</p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Right Column - Documents */}
+                                {/* Right Column - Documents (view only) */}
                                 <div className="space-y-2 lg:border-l lg:pl-6">
                                     <div className="space-y-2">
                                         <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                             {/* Passport Photo */}
                                             <div className="space-y-1">
-                                                <label className="text-sm font-medium text-gray-500">Passport Photo</label>
+                                                <Label className="text-sm font-medium text-gray-500">Passport Photo</Label>
+                                                {isEditing ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+                                                            {newPhotoPreview ? (
+                                                                <img src={newPhotoPreview} alt="New Passport Photo Preview" className="object-contain w-full h-full" />
+                                                            ) : (
+                                                                <Image
+                                                                    src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`}
+                                                                    alt="Passport Photo"
+                                                                    fill
+                                                                    className="object-contain"
+                                                                />
+                                                            )}
+                                                            {newPhotoPreview && (
+                                                                <button type="button" className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1" onClick={handleClearPhoto}>
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <input type="file" accept="image/jpeg,image/png,image/jpg,image/webp,image/heic,image/heif" onChange={handlePhotoFileChange} className="block w-full text-xs" />
+                                                        {imageErrors.photo && <p className="text-xs text-red-500">{imageErrors.photo}</p>}
+                                                    </div>
+                                                ) : (
                                                 <div
                                                     className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
                                                     onClick={() => {
@@ -1109,12 +1671,36 @@ export function Registration() {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                )}
                                                 <p className="text-xs text-center text-gray-500 mt-1">Click image to view full size</p>
                                             </div>
 
                                             {/* Aadhar Card */}
                                             <div className="space-y-1">
-                                                <label className="text-sm font-medium text-gray-500">Aadhar Card</label>
+                                                <Label className="text-sm font-medium text-gray-500">Aadhar Card</Label>
+                                                {isEditing ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+                                                            {newAadharPreview ? (
+                                                                <img src={newAadharPreview} alt="New Aadhar Card Preview" className="object-contain w-full h-full" />
+                                                            ) : (
+                                                                <Image
+                                                                    src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`}
+                                                                    alt="Aadhar Card"
+                                                                    fill
+                                                                    className="object-contain"
+                                                                />
+                                                            )}
+                                                            {newAadharPreview && (
+                                                                <button type="button" className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1" onClick={handleClearAadhar}>
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <input type="file" accept="image/jpeg,image/png,image/jpg,image/webp,image/heic,image/heif" onChange={handleAadharFileChange} className="block w-full text-xs" />
+                                                        {imageErrors.aadhar && <p className="text-xs text-red-500">{imageErrors.aadhar}</p>}
+                                                    </div>
+                                                ) : (
                                                 <div
                                                     className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
                                                     onClick={() => {
@@ -1138,6 +1724,7 @@ export function Registration() {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                )}
                                                 <p className="text-xs text-center text-gray-500 mt-1">Click image to view full size</p>
                                             </div>
                                         </div>
@@ -1158,19 +1745,128 @@ export function Registration() {
                                 </div>
 
                                 <div className="flex items-center gap-2">
+                                    {isEditing ? (
+                                        <>
                                     <Button
-                                        variant={selectedRegistration.status === 'APPROVED' ? 'outline' : 'default'}
-                                        onClick={() => handleStatusChange(selectedRegistration.id, 'APPROVED')}
-                                        disabled={selectedRegistration.status === 'APPROVED'}
+                                                variant="default"
+                                                onClick={handleEditSave}
+                                                size="sm"
+                                                className="h-9 px-2 sm:px-3"
+                                            >
+                                                {editLoading ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                        Saving...
+                                                    </span>
+                                                ) : 'Save'}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleEditCancel}
+                                                size="sm"
+                                                className="h-9 px-2 sm:px-3"
+                                            >
+                                                Cancel
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {selectedRegistration.status === 'PENDING' && (
+                                                <Button
+                                                    variant="default"
+                                                    onClick={() => handleStatusChange(selectedRegistration.id, 'SHORTLISTED', 'shortlist')}
+                                                    size="sm"
+                                                    className="h-9 px-2 sm:px-3"
+                                                    title="Shortlist"
+                                                    disabled={statusActionLoading.id === selectedRegistration.id}
+                                                >
+                                                    {statusActionLoading.id === selectedRegistration.id && statusActionLoading.action === 'shortlist' ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                            Shortlisting...
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                                            </svg>
+                                                            <span className="hidden sm:inline ml-2">Shortlist</span>
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
+                                            {selectedRegistration.status === 'SHORTLISTED' && (
+                                                <Button
+                                                    variant="default"
+                                                    onClick={() => handleStatusChange(selectedRegistration.id, 'APPROVED', 'approve')}
                                         size="sm"
                                         className="h-9 px-2 sm:px-3"
                                         title="Approve"
-                                    >
+                                                    disabled={statusActionLoading.id === selectedRegistration.id}
+                                                >
+                                                    {statusActionLoading.id === selectedRegistration.id && statusActionLoading.action === 'approve' ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                            Approving...
+                                                        </span>
+                                                    ) : (
+                                                        <>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                         </svg>
                                         <span className="hidden sm:inline ml-2">Approve</span>
+                                                        </>
+                                                    )}
                                     </Button>
+                                            )}
+                                            {selectedRegistration.status === 'SHORTLISTED' && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleStatusChange(selectedRegistration.id, 'PENDING', 'undo-shortlist')}
+                                                    size="sm"
+                                                    className="h-9 px-2 sm:px-3"
+                                                    title="Undo Shortlist"
+                                                    disabled={statusActionLoading.id === selectedRegistration.id}
+                                                >
+                                                    {statusActionLoading.id === selectedRegistration.id && statusActionLoading.action === 'undo-shortlist' ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                            Undoing...
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h16" />
+                                                            </svg>
+                                                            <span className="hidden sm:inline ml-2">Undo Shortlist</span>
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
+                                            {selectedRegistration.status === 'APPROVED' && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleStatusChange(selectedRegistration.id, 'SHORTLISTED', 'undo-approve')}
+                                                    size="sm"
+                                                    className="h-9 px-2 sm:px-3"
+                                                    title="Undo Approve"
+                                                    disabled={statusActionLoading.id === selectedRegistration.id}
+                                                >
+                                                    {statusActionLoading.id === selectedRegistration.id && statusActionLoading.action === 'undo-approve' ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                            Undoing...
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h16" />
+                                                            </svg>
+                                                            <span className="hidden sm:inline ml-2">Undo Approve</span>
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
                                     <Button
                                         variant="outline"
                                         onClick={() => handleEdit(selectedRegistration)}
@@ -1196,22 +1892,10 @@ export function Registration() {
                                         </svg>
                                         <span className="hidden sm:inline ml-2">Close</span>
                                     </Button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-            {/* Edit Dialog */}
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Edit Registration</DialogTitle>
-                    </DialogHeader>
-                    {selectedRegistration && (
-                        <div className="space-y-6">
-                            {/* Add edit form fields here */}
-                            <p className="text-center text-gray-500">Edit functionality will be implemented in the next phase.</p>
                         </div>
                     )}
                 </DialogContent>
