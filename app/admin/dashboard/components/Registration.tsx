@@ -451,6 +451,7 @@ export function Registration() {
             const updatedRegistrations = [...registrations];
             updatedRegistrations[regIndex] = updatedRegistration;
             setRegistrations(updatedRegistrations);
+            setSelectedRegistration(updatedRegistration);
             toast.success('Status updated successfully');
         } catch (error) {
             console.error('Error updating status:', error);
@@ -651,6 +652,7 @@ export function Registration() {
                 const updatedRegistrations = [...registrations];
                 updatedRegistrations[regIndex] = updatedRegistration;
                 setRegistrations(updatedRegistrations);
+                setSelectedRegistration(updatedRegistration);
             } else {
                 // PATCH as before
                 const res = await fetch(`/api/admin/registrations`, {
@@ -668,13 +670,13 @@ export function Registration() {
                 const updatedRegistrations = [...registrations];
                 updatedRegistrations[regIndex] = updatedRegistration;
                 setRegistrations(updatedRegistrations);
+                setSelectedRegistration(updatedRegistration);
             }
 
             toast.success('Registration updated successfully');
             setIsEditing(false);
             setEditForm(null);
             setEditErrors({});
-            setIsViewDialogOpen(false);
         } catch (e: unknown) {
             let message = 'Failed to update registration';
             if (e instanceof Error) message = e.message;
