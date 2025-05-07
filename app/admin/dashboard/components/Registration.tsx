@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+
+import { runExcelExportWorker } from './exportWorkerWrapper';
 import {
     Table,
     TableBody,
@@ -26,7 +28,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import ExcelJS from 'exceljs';
+
 import { Download } from 'lucide-react';
 
 type RegistrationStatus = 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED';
@@ -86,6 +88,8 @@ const categories = [
 ];
 
 export function Registration() {
+    // Ref to store the export worker instance for cancellation
+    const exportWorkerRef = React.useRef<{ cancel: () => void } | null>(null);
     const [registrations, setRegistrations] = useState<Registration[]>([]);
     const [loading, setLoading] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
@@ -103,6 +107,9 @@ export function Registration() {
     const pageSizeOptions = [5, 10, 20, 50];
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const [previewImageAlt, setPreviewImageAlt] = useState<string>('');
+    // --- Export Dialog States ---
+    const [exportLoading, setExportLoading] = useState(false);
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
     const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt' | 'city' | 'village'>('createdAt');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [advancedFilters, setAdvancedFilters] = useState({
@@ -136,8 +143,7 @@ export function Registration() {
     const [newAadharFile, setNewAadharFile] = useState<File | null>(null);
     const [newAadharPreview, setNewAadharPreview] = useState<string | null>(null);
     const [imageErrors, setImageErrors] = useState<{ photo?: string; aadhar?: string }>({});
-    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-    const [exportLoading, setExportLoading] = useState(false);
+
 
     // Calculate totals per category
     const totals = {
@@ -575,7 +581,7 @@ export function Registration() {
             if (regIndex === -1) throw new Error('Registration not found');
             // Update the status in the local state
             const updatedRegistration = { ...registrations[regIndex], ...editForm };
-            
+
             // 1. If new photo or aadhar file, upload to S3 using the same key
             if (newPhotoFile) {
                 const res = await fetch('/api/upload-url', {
@@ -772,174 +778,118 @@ export function Registration() {
     const handleClearPhoto = () => { setNewPhotoFile(null); setNewPhotoPreview(null); setImageErrors(e => ({ ...e, photo: undefined })); };
     const handleClearAadhar = () => { setNewAadharFile(null); setNewAadharPreview(null); setImageErrors(e => ({ ...e, aadhar: undefined })); };
 
-    // Utility: Convert webp Blob to jpeg base64 using canvas
-    // async function convertWebpToJpegBase64(webpBlob: Blob): Promise<string> {
-    //     return new Promise((resolve, reject) => {
-    //         const img = new window.Image();
-    //         img.onload = () => {
-    //             const canvas = document.createElement('canvas');
-    //             canvas.width = img.width;
-    //             canvas.height = img.height;
-    //             const ctx = canvas.getContext('2d');
-    //             if (!ctx) return reject(new Error('Canvas not supported'));
-    //             ctx.drawImage(img, 0, 0);
-    //             canvas.toBlob(
-    //                 (jpegBlob) => {
-    //                     if (!jpegBlob) return reject(new Error('JPEG conversion failed'));
-    //                     const reader = new FileReader();
-    //                     reader.onloadend = () => {
-    //                         const base64 = (reader.result as string).split(',')[1];
-    //                         resolve(base64);
-    //                     };
-    //                     reader.readAsDataURL(jpegBlob);
-    //                 },
-    //                 'image/jpeg',
-    //                 0.92
-    //             );
-    //         };
-    //         img.onerror = reject;
-    //         img.src = URL.createObjectURL(webpBlob);
-    //     });
-    // }
-
-    // Helper to fetch image as base64 from CloudFront, converting webp to jpeg if needed
-    // async function fetchImageAsBase64(url: string): Promise<{base64: string, mime: string} | null> {
-    //     try {
-    //         const res = await fetch(url);
-    //         if (!res.ok) return null;
-    //         const blob = await res.blob();
-    //         let mime = blob.type;
-    //         let base64: string;
-    //         if (mime === 'image/webp') {
-    //             base64 = await convertWebpToJpegBase64(blob);
-    //             mime = 'image/jpeg';
-    //         } else {
-    //             base64 = await new Promise<string>((resolve, reject) => {
-    //                 const reader = new FileReader();
-    //                 reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-    //                 reader.onerror = reject;
-    //                 reader.readAsDataURL(blob);
-    //             });
-    //         }
-    //         return { base64, mime };
-    //     } catch {
-    //         return null;
-    //     }
-    // }
-
-    // Excel export logic (optimized)
     async function handleExport(type: 'all' | 'filtered') {
         setExportLoading(true);
         setIsExportDialogOpen(false);
-        try {
-            const dataToExport = type === 'all' ? registrations : filteredRegistrations;
-            const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Registrations');
-            worksheet.columns = [
-                { header: 'ID', key: 'id', width: 18 },
-                { header: 'Full Name', key: 'fullName', width: 22 },
-                { header: 'Age', key: 'age', width: 8 },
-                { header: 'Gender', key: 'gender', width: 10 },
-                { header: 'Guardian Name', key: 'guardianName', width: 22 },
-                { header: 'Address', key: 'address', width: 30 },
-                { header: 'City', key: 'city', width: 16 },
-                { header: 'Pin Code', key: 'pinCode', width: 12 },
-                { header: 'Village', key: 'village', width: 16 },
-                { header: 'Aadhar Number', key: 'aadharNumber', width: 18 },
-                { header: 'Phone Number', key: 'phoneNumber', width: 16 },
-                { header: 'WhatsApp Number', key: 'whatsappNumber', width: 16 },
-                { header: 'Emergency Contact', key: 'emergencyContact', width: 18 },
-                { header: 'Existing Tapasya', key: 'existingTapasya', width: 18 },
-                { header: 'Linked Form', key: 'linkedForm', width: 18 },
-                { header: 'Previous Participation', key: 'hasParticipatedBefore', width: 16 },
-                { header: 'Form Type', key: 'formType', width: 10 },
-                { header: 'Created At', key: 'createdAt', width: 20 },
-                { header: 'Status', key: 'status', width: 14 },
-                // { header: 'Passport Photo', key: 'passportPhoto', width: 18 },
-                // { header: 'Aadhar Card', key: 'aadharCard', width: 18 },
-            ];
-            // Add rows (without images for now)
-            for (const reg of dataToExport) {
-                worksheet.addRow({
-                    ...reg,
-                    gender: reg.gender === 'M' ? 'Male' : 'Female',
-                    hasParticipatedBefore: reg.hasParticipatedBefore ? 'Yes' : 'No',
-                    // passportPhoto: '',
-                    // aadharCard: '',
-                });
-            }
-            // Fetch all images in parallel for speed
-            // const imagePromises = dataToExport.map(async (reg) => {
-            //     const photoUrl = `https://d3b13419yglo3r.cloudfront.net/${reg.photoKey}`;
-            //     const aadharUrl = `https://d3b13419yglo3r.cloudfront.net/${reg.aadharKey}`;
-            //     const [photo, aadhar] = await Promise.all([
-            //         fetchImageAsBase64(photoUrl),
-            //         fetchImageAsBase64(aadharUrl),
-            //     ]);
-            //     return { photo, aadhar };
-            // });
-            // const allImages = await Promise.all(imagePromises);
-            // Insert images in correct cells (col 20: passportPhoto, col 21: aadharCard)
-            // for (let i = 0; i < allImages.length; i++) {
-            //     const { photo, aadhar } = allImages[i];
-            //     // ExcelJS columns: T = 20, U = 21 (1-indexed), rows start at 2 (header is row 1)
-            //     const rowNum = i + 2;
-            //     if (photo) {
-            //         const imgId = workbook.addImage({
-            //             base64: photo.base64,
-            //             extension: 'jpeg',
-            //         });
-            //         worksheet.addImage(imgId, `T${rowNum}:T${rowNum}`);
-            //     }
-            //     if (aadhar) {
-            //         const imgId = workbook.addImage({
-            //             base64: aadhar.base64,
-            //             extension: 'jpeg',
-            //         });
-            //         worksheet.addImage(imgId, `U${rowNum}:U${rowNum}`);
-            //     }
-            // }
-            // Download
-            const buf = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `registrations_${type}_${new Date().toISOString().slice(0,10)}.xlsx`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        } catch (e: unknown) {
-            console.error(e);
-            toast.error('Failed to export Excel');
-        } finally {
-            setExportLoading(false);
-        }
+
+        const columns = [
+            { header: 'ID', key: 'id', width: 18 },
+            { header: 'Full Name', key: 'fullName', width: 22 },
+            { header: 'Age', key: 'age', width: 8 },
+            { header: 'Gender', key: 'gender', width: 10 },
+            { header: 'Guardian Name', key: 'guardianName', width: 22 },
+            { header: 'Address', key: 'address', width: 30 },
+            { header: 'City', key: 'city', width: 16 },
+            { header: 'Pin Code', key: 'pinCode', width: 12 },
+            { header: 'Village', key: 'village', width: 16 },
+            { header: 'Aadhar Number', key: 'aadharNumber', width: 18 },
+            { header: 'Phone Number', key: 'phoneNumber', width: 16 },
+            { header: 'WhatsApp Number', key: 'whatsappNumber', width: 16 },
+            { header: 'Emergency Contact', key: 'emergencyContact', width: 18 },
+            { header: 'Existing Tapasya', key: 'existingTapasya', width: 18 },
+            { header: 'Linked Form', key: 'linkedForm', width: 18 },
+            { header: 'Previous Participation', key: 'hasParticipatedBefore', width: 16 },
+            { header: 'Form Type', key: 'formType', width: 10 },
+            { header: 'Created At', key: 'createdAt', width: 20 },
+            { header: 'Status', key: 'status', width: 14 },
+            { header: 'Photo', key: 'photo', width: 20 },
+            { header: 'Aadhar', key: 'aadhar', width: 20 },
+        ];
+        const imageSize = { width: 80, height: 100 };
+        const registrationsObj = { all: registrations, filtered: filteredRegistrations };
+        // Store the worker instance for cancellation
+        exportWorkerRef.current = runExcelExportWorker({
+            registrations: registrationsObj,
+            filtered: type === 'filtered',
+            imageSize: imageSize,
+            columns: columns,
+            onProgress: () => { },
+            onDone: (buf: ArrayBuffer, failedImages: string[]) => {
+                setExportLoading(false);
+                exportWorkerRef.current = null;
+                if (failedImages && failedImages.length > 0) {
+                    toast.warning(`Exported with ${failedImages.length} missing images.`, { duration: 8000 });
+                }
+                const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `registrations_${type}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            },
+            onError: (err: string) => {
+                setExportLoading(false);
+                exportWorkerRef.current = null;
+                toast.error('Failed to export Excel: ' + err);
+            },
+            onCancelled: () => {
+                setExportLoading(false);
+                exportWorkerRef.current = null;
+                toast('Export cancelled.');
+            },
+        });
     }
+
+
+
+
+    // --- Export Progress Modal Render ---
+    // Place this near the root of your Registration component
+    //
+    // The modal will show during export and allow canceling.
+    //
+    // Lint note: All hooks and imports are now at the top, types are fixed.
 
     // Export button UI
     const exportButton = (
-        <div className="relative inline-block">
-            <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                onClick={() => setIsExportDialogOpen(true)}
-                disabled={exportLoading}
-            >
-                {exportLoading ? (
-                    <>
-                        <svg className="animate-spin w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
-                        Preparing...
-                    </>
-                ) : (
-                    <>
-                        <Download className="w-4 h-4" />
-                        Export
-                    </>
+        <>
+            <div className="relative inline-flex items-center gap-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() => setIsExportDialogOpen(true)}
+                    disabled={exportLoading}
+                >
+                    {exportLoading ? (
+                        <>
+                            <svg className="animate-spin w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                            Preparing...
+                        </>
+                    ) : (
+                        <>
+                            <Download className="w-4 h-4" />
+                            Export
+                        </>
+                    )}
+                </Button>
+                {exportLoading && (
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex items-center gap-2"
+                        onClick={() => {
+                            exportWorkerRef.current?.cancel();
+                            setIsExportDialogOpen(false);
+                        }}
+                    >
+                        Cancel Export
+                    </Button>
                 )}
-            </Button>
+            </div>
             <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                 <DialogContent className="w-[320px] max-w-[95vw]">
                     <DialogHeader>
@@ -951,7 +901,7 @@ export function Registration() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </>
     );
 
     if (loading) {
@@ -1307,8 +1257,8 @@ export function Registration() {
                             View Details
                         </Button>
                         {reg.status === 'PENDING' && (
-                        <Button
-                            size="sm"
+                            <Button
+                                size="sm"
                                 variant="default"
                                 onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'SHORTLISTED', 'shortlist'); }}
                                 disabled={statusActionLoading.id === reg.id}
@@ -1319,7 +1269,7 @@ export function Registration() {
                                         Shortlisting...
                                     </span>
                                 ) : 'Shortlist'}
-                        </Button>
+                            </Button>
                         )}
                         {reg.status === 'SHORTLISTED' && (
                             <Button
@@ -1468,8 +1418,8 @@ export function Registration() {
                                             View Details
                                         </Button>
                                         {reg.status === 'PENDING' && (
-                                        <Button
-                                            size="sm"
+                                            <Button
+                                                size="sm"
                                                 variant="default"
                                                 onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'SHORTLISTED', 'shortlist'); }}
                                                 disabled={statusActionLoading.id === reg.id}
@@ -1480,7 +1430,7 @@ export function Registration() {
                                                         Shortlisting...
                                                     </span>
                                                 ) : 'Shortlist'}
-                                        </Button>
+                                            </Button>
                                         )}
                                         {reg.status === 'SHORTLISTED' && (
                                             <Button
@@ -1593,7 +1543,7 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="fullName" value={editForm?.fullName || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900">{selectedRegistration.fullName}</p>
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.fullName}</p>
                                                 )}
                                                 {editErrors.fullName && <p className="text-xs text-red-500">{editErrors.fullName}</p>}
                                             </div>
@@ -1603,7 +1553,7 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="guardianName" value={editForm?.guardianName || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900">{selectedRegistration.guardianName}</p>
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.guardianName}</p>
                                                 )}
                                                 {editErrors.guardianName && <p className="text-xs text-red-500">{editErrors.guardianName}</p>}
                                             </div>
@@ -1619,17 +1569,17 @@ export function Registration() {
                                                         </select>
                                                     </div>
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900 flex items-center gap-2">
-                                                    {selectedRegistration.age} years
-                                                    <span className="inline-flex items-center gap-1">
-                                                        {selectedRegistration.gender === 'M' ? (
-                                                            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 8l4-4m0 0v4m0-4h-4" /></svg>
-                                                        ) : (
-                                                            <svg className="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4m0 0V8m0 4h4m-4 0H8" /></svg>
-                                                        )}
-                                                        {selectedRegistration.gender === 'M' ? 'Male' : 'Female'}
-                                                    </span>
-                                                </p>
+                                                    <p className="text-base font-medium text-gray-900 flex items-center gap-2">
+                                                        {selectedRegistration.age} years
+                                                        <span className="inline-flex items-center gap-1">
+                                                            {selectedRegistration.gender === 'M' ? (
+                                                                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 8l4-4m0 0v4m0-4h-4" /></svg>
+                                                            ) : (
+                                                                <svg className="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4m0 0V8m0 4h4m-4 0H8" /></svg>
+                                                            )}
+                                                            {selectedRegistration.gender === 'M' ? 'Male' : 'Female'}
+                                                        </span>
+                                                    </p>
                                                 )}
                                                 {editErrors.age && <p className="text-xs text-red-500">{editErrors.age}</p>}
                                             </div>
@@ -1645,7 +1595,7 @@ export function Registration() {
                                                         className={editErrors.aadharNumber ? 'border-red-500' : ''}
                                                     />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900">{selectedRegistration.aadharNumber}</p>
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.aadharNumber}</p>
                                                 )}
                                                 {editErrors.aadharNumber && <p className="text-xs text-red-500">{editErrors.aadharNumber}</p>}
                                             </div>
@@ -1658,11 +1608,11 @@ export function Registration() {
                                                         <option value="false">No</option>
                                                     </select>
                                                 ) : (
-                                                <p className="text-base font-medium">
-                                                    <span className={`inline-block px-2 py-0.5 rounded text-sm font-semibold ${selectedRegistration.hasParticipatedBefore ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                                                        {selectedRegistration.hasParticipatedBefore ? 'Yes' : 'No'}
-                                                    </span>
-                                                </p>
+                                                    <p className="text-base font-medium">
+                                                        <span className={`inline-block px-2 py-0.5 rounded text-sm font-semibold ${selectedRegistration.hasParticipatedBefore ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                            {selectedRegistration.hasParticipatedBefore ? 'Yes' : 'No'}
+                                                        </span>
+                                                    </p>
                                                 )}
                                             </div>
                                             {/* Registration Date (not editable) */}
@@ -1683,16 +1633,16 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="phoneNumber" value={editForm?.phoneNumber || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p>
-                                                    <a
-                                                        href={`https://wa.me/${selectedRegistration.whatsappNumber}`}
-                                                        className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                    >
-                                                        {selectedRegistration.phoneNumber}
-                                                    </a>
-                                                </p>
+                                                    <p>
+                                                        <a
+                                                            href={`https://wa.me/${selectedRegistration.whatsappNumber}`}
+                                                            className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            {selectedRegistration.phoneNumber}
+                                                        </a>
+                                                    </p>
 
                                                 )}
                                                 {editErrors.phoneNumber && <p className="text-xs text-red-500">{editErrors.phoneNumber}</p>}
@@ -1703,16 +1653,16 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="whatsappNumber" value={editForm?.whatsappNumber || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p>
-                                                    <a
-                                                        href={`https://wa.me/${selectedRegistration.whatsappNumber}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
-                                                    >
-                                                        {selectedRegistration.whatsappNumber}
-                                                    </a>
-                                                </p>
+                                                    <p>
+                                                        <a
+                                                            href={`https://wa.me/${selectedRegistration.whatsappNumber}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
+                                                        >
+                                                            {selectedRegistration.whatsappNumber}
+                                                        </a>
+                                                    </p>
                                                 )}
                                                 {editErrors.whatsappNumber && <p className="text-xs text-red-500">{editErrors.whatsappNumber}</p>}
                                             </div>
@@ -1722,14 +1672,14 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="emergencyContact" value={editForm?.emergencyContact || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p>
-                                                    <a
-                                                        href={`tel:${selectedRegistration.emergencyContact}`}
-                                                        className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
-                                                    >
-                                                        {selectedRegistration.emergencyContact}
-                                                    </a>
-                                                </p>
+                                                    <p>
+                                                        <a
+                                                            href={`tel:${selectedRegistration.emergencyContact}`}
+                                                            className="text-base font-medium text-primary underline hover:text-primary/80 transition-colors"
+                                                        >
+                                                            {selectedRegistration.emergencyContact}
+                                                        </a>
+                                                    </p>
 
                                                 )}
                                                 {editErrors.emergencyContact && <p className="text-xs text-red-500">{editErrors.emergencyContact}</p>}
@@ -1740,7 +1690,7 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="pinCode" value={editForm?.pinCode || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900">{selectedRegistration.pinCode}</p>
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.pinCode}</p>
                                                 )}
                                                 {editErrors.pinCode && <p className="text-xs text-red-500">{editErrors.pinCode}</p>}
                                             </div>
@@ -1750,7 +1700,7 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="city" value={editForm?.city || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900">{selectedRegistration.city}</p>
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.city}</p>
                                                 )}
                                                 {editErrors.city && <p className="text-xs text-red-500">{editErrors.city}</p>}
                                             </div>
@@ -1760,7 +1710,7 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="village" value={editForm?.village || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900">{selectedRegistration.village}</p>
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.village}</p>
                                                 )}
                                                 {editErrors.village && <p className="text-xs text-red-500">{editErrors.village}</p>}
                                             </div>
@@ -1770,7 +1720,7 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Textarea name="address" value={editForm?.address || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900 whitespace-pre-line">{selectedRegistration.address}</p>
+                                                    <p className="text-base font-medium text-gray-900 whitespace-pre-line">{selectedRegistration.address}</p>
                                                 )}
                                                 {editErrors.address && <p className="text-xs text-red-500">{editErrors.address}</p>}
                                             </div>
@@ -1787,7 +1737,7 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="linkedForm" value={editForm?.linkedForm || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900">{selectedRegistration.linkedForm || 'Not Available'}</p>
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.linkedForm || 'Not Available'}</p>
                                                 )}
                                             </div>
                                             {/* Existing Tapasya */}
@@ -1796,7 +1746,7 @@ export function Registration() {
                                                 {isEditing ? (
                                                     <Input name="existingTapasya" value={editForm?.existingTapasya || ''} onChange={handleEditChange} />
                                                 ) : (
-                                                <p className="text-base font-medium text-gray-900">{selectedRegistration.existingTapasya || 'Not Available'}</p>
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.existingTapasya || 'Not Available'}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -1834,29 +1784,29 @@ export function Registration() {
                                                         {imageErrors.photo && <p className="text-xs text-red-500">{imageErrors.photo}</p>}
                                                     </div>
                                                 ) : (
-                                                <div
-                                                    className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
-                                                    onClick={() => {
-                                                        setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`);
-                                                        setPreviewImageAlt('Passport Photo');
-                                                    }}
-                                                >
-                                                    <Image
-                                                        src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`}
-                                                        alt="Passport Photo"
-                                                        fill
-                                                        className="object-contain"
-                                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                                    />
-                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
-                                                        <div className="flex flex-col items-center text-white">
-                                                            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                                            </svg>
-                                                            <span className="text-sm font-semibold">Click to Preview</span>
+                                                    <div
+                                                        className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
+                                                        onClick={() => {
+                                                            setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`);
+                                                            setPreviewImageAlt('Passport Photo');
+                                                        }}
+                                                    >
+                                                        <Image
+                                                            src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.photoKey}`}
+                                                            alt="Passport Photo"
+                                                            fill
+                                                            className="object-contain"
+                                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                        />
+                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
+                                                            <div className="flex flex-col items-center text-white">
+                                                                <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                                                </svg>
+                                                                <span className="text-sm font-semibold">Click to Preview</span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
                                                 )}
                                                 <p className="text-xs text-center text-gray-500 mt-1">Click image to view full size</p>
                                             </div>
@@ -1887,29 +1837,29 @@ export function Registration() {
                                                         {imageErrors.aadhar && <p className="text-xs text-red-500">{imageErrors.aadhar}</p>}
                                                     </div>
                                                 ) : (
-                                                <div
-                                                    className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
-                                                    onClick={() => {
-                                                        setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`);
-                                                        setPreviewImageAlt('Aadhar Card');
-                                                    }}
-                                                >
-                                                    <Image
-                                                        src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`}
-                                                        alt="Aadhar Card"
-                                                        fill
-                                                        className="object-contain"
-                                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                                    />
-                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
-                                                        <div className="flex flex-col items-center text-white">
-                                                            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                                            </svg>
-                                                            <span className="text-sm font-semibold">Click to Preview</span>
+                                                    <div
+                                                        className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
+                                                        onClick={() => {
+                                                            setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`);
+                                                            setPreviewImageAlt('Aadhar Card');
+                                                        }}
+                                                    >
+                                                        <Image
+                                                            src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.aadharKey}`}
+                                                            alt="Aadhar Card"
+                                                            fill
+                                                            className="object-contain"
+                                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                        />
+                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
+                                                            <div className="flex flex-col items-center text-white">
+                                                                <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                                                </svg>
+                                                                <span className="text-sm font-semibold">Click to Preview</span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
                                                 )}
                                                 <p className="text-xs text-center text-gray-500 mt-1">Click image to view full size</p>
                                             </div>
@@ -1933,7 +1883,7 @@ export function Registration() {
                                 <div className="flex items-center gap-2">
                                     {isEditing ? (
                                         <>
-                                    <Button
+                                            <Button
                                                 variant="default"
                                                 onClick={handleEditSave}
                                                 size="sm"
@@ -1985,9 +1935,9 @@ export function Registration() {
                                                 <Button
                                                     variant="default"
                                                     onClick={() => handleStatusChange(selectedRegistration.id, 'APPROVED', 'approve')}
-                                        size="sm"
-                                        className="h-9 px-2 sm:px-3"
-                                        title="Approve"
+                                                    size="sm"
+                                                    className="h-9 px-2 sm:px-3"
+                                                    title="Approve"
                                                     disabled={statusActionLoading.id === selectedRegistration.id}
                                                 >
                                                     {statusActionLoading.id === selectedRegistration.id && statusActionLoading.action === 'approve' ? (
@@ -1997,13 +1947,13 @@ export function Registration() {
                                                         </span>
                                                     ) : (
                                                         <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        <span className="hidden sm:inline ml-2">Approve</span>
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                            <span className="hidden sm:inline ml-2">Approve</span>
                                                         </>
                                                     )}
-                                    </Button>
+                                                </Button>
                                             )}
                                             {selectedRegistration.status === 'SHORTLISTED' && (
                                                 <Button
@@ -2053,31 +2003,31 @@ export function Registration() {
                                                     )}
                                                 </Button>
                                             )}
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => handleEdit(selectedRegistration)}
-                                        size="sm"
-                                        className="h-9 px-2 sm:px-3"
-                                        title="Edit"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6 6M3 21h6l11-11a2.828 2.828 0 00-4-4L5 17v4z" />
-                                        </svg>
-                                        <span className="hidden sm:inline ml-2">Edit</span>
-                                    </Button>
-                                    <div className="w-px h-6 bg-gray-200 mx-1 sm:mx-2" /> {/* Vertical Divider */}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-9 px-2 sm:px-3"
-                                        onClick={() => setIsViewDialogOpen(false)}
-                                        title="Close"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                        <span className="hidden sm:inline ml-2">Close</span>
-                                    </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => handleEdit(selectedRegistration)}
+                                                size="sm"
+                                                className="h-9 px-2 sm:px-3"
+                                                title="Edit"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6 6M3 21h6l11-11a2.828 2.828 0 00-4-4L5 17v4z" />
+                                                </svg>
+                                                <span className="hidden sm:inline ml-2">Edit</span>
+                                            </Button>
+                                            <div className="w-px h-6 bg-gray-200 mx-1 sm:mx-2" /> {/* Vertical Divider */}
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-9 px-2 sm:px-3"
+                                                onClick={() => setIsViewDialogOpen(false)}
+                                                title="Close"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                <span className="hidden sm:inline ml-2">Close</span>
+                                            </Button>
                                         </>
                                     )}
                                 </div>
