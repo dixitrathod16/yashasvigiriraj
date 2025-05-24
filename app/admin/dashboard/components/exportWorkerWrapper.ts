@@ -10,13 +10,14 @@ interface RunExcelExportWorkerParams {
     height: number;
   };
   columns: unknown[]; // TODO: Replace 'unknown' with a more specific type if available
+  includeImages?: boolean; // Optional parameter to include/exclude images in export
   onProgress?: (value: number) => void;
   onDone?: (buf: ArrayBuffer, failedImages: string[]) => void;
   onError?: (error: string) => void;
   onCancelled?: () => void;
 }
 
-export function runExcelExportWorker({ registrations, filtered, imageSize, columns, onProgress, onDone, onError, onCancelled }: RunExcelExportWorkerParams) {
+export function runExcelExportWorker({ registrations, filtered, imageSize, columns, includeImages = true, onProgress, onDone, onError, onCancelled }: RunExcelExportWorkerParams) {
   const worker = new Worker(new URL('./exportWorker.ts', import.meta.url), { type: 'module' });
 
   worker.onmessage = (e) => {
@@ -31,7 +32,7 @@ export function runExcelExportWorker({ registrations, filtered, imageSize, colum
     if (onError) onError(e.message);
   };
 
-  worker.postMessage({ registrations, filtered, imageSize, columns });
+  worker.postMessage({ registrations, filtered, imageSize, columns, includeImages });
 
   return {
     cancel: () => {

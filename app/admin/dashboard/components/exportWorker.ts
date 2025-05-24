@@ -46,7 +46,7 @@ self.onmessage = async (e) => {
     self.postMessage({ type: 'cancelled' });
     return;
   }
-  const { registrations, filtered, imageSize, columns } = e.data;
+  const { registrations, filtered, imageSize, columns, includeImages = true } = e.data;
   cancelled = false;
   try {
     const dataToExport = filtered ? registrations.filtered : registrations.all;
@@ -62,10 +62,12 @@ self.onmessage = async (e) => {
         aadhar: '',
       });
     }
-    // Set row height for image rows
-    worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber > 1) row.height = imageSize.height * 0.75; // px to pt
-    });
+    // Set row height for image rows only if includeImages is true
+    if (includeImages) {
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) row.height = imageSize.height * 0.75; // px to pt
+      });
+    }
 
     // Concurrency-limited image fetching
     const limit = pLimit(20); // 20 concurrent fetches
@@ -83,45 +85,51 @@ self.onmessage = async (e) => {
       }
     };
 
-    for (let i = 0; i < dataToExport.length; i++) {
-      if (cancelled) break;
-      const reg = dataToExport[i];
-      const rowNumber = i + 2;
-      if (reg.photoKey) {
-        imageTasks.push(limit(async () => {
-          if (cancelled) return;
-          const buffer = await fetchImageAsBuffer(cloudfrontBase + reg.photoKey);
-          if (buffer) {
-            const imageId = workbook.addImage({ buffer, extension: 'jpeg' });
-            worksheet.addImage(imageId, {
-              tl: { col: worksheet.getColumn('photo').number - 1, row: rowNumber - 1 },
-              ext: imageSize,
-              editAs: 'oneCell',
-            });
-          } else {
-            failedImages.push({ row: rowNumber, type: 'photo', key: reg.photoKey });
-          }
-          self.postMessage({ type: 'progress', value: (imageTasks.length / (dataToExport.length * 2)) * 100 });
-        }));
+    // Skip image processing if includeImages is false
+    if (!includeImages) {
+      // Still need to report progress
+      self.postMessage({ type: 'progress', value: 100 });
+    } else {
+      for (let i = 0; i < dataToExport.length; i++) {
+        if (cancelled) break;
+        const reg = dataToExport[i];
+        const rowNumber = i + 2;
+        if (reg.photoKey) {
+          imageTasks.push(limit(async () => {
+            if (cancelled) return;
+            const buffer = await fetchImageAsBuffer(cloudfrontBase + reg.photoKey);
+            if (buffer) {
+              const imageId = workbook.addImage({ buffer, extension: 'jpeg' });
+              worksheet.addImage(imageId, {
+                tl: { col: worksheet.getColumn('photo').number - 1, row: rowNumber - 1 },
+                ext: imageSize,
+                editAs: 'oneCell',
+              });
+            } else {
+              failedImages.push({ row: rowNumber, type: 'photo', key: reg.photoKey });
+            }
+            self.postMessage({ type: 'progress', value: (imageTasks.length / (dataToExport.length * 2)) * 100 });
+          }));
+        }
+        if (reg.aadharKey) {
+          imageTasks.push(limit(async () => {
+            if (cancelled) return;
+            const buffer = await fetchImageAsBuffer(cloudfrontBase + reg.aadharKey);
+            if (buffer) {
+              const imageId = workbook.addImage({ buffer, extension: 'jpeg' });
+              worksheet.addImage(imageId, {
+                tl: { col: worksheet.getColumn('aadhar').number - 1, row: rowNumber - 1 },
+                ext: imageSize,
+                editAs: 'oneCell',
+              });
+            } else {
+              failedImages.push({ row: rowNumber, type: 'aadhar', key: reg.aadharKey });
+            }
+            self.postMessage({ type: 'progress', value: (imageTasks.length / (dataToExport.length * 2)) * 100 });
+          }));
+        }
+        if (i % 10 === 0) self.postMessage({ type: 'progress', value: (i / dataToExport.length) * 100 });
       }
-      if (reg.aadharKey) {
-        imageTasks.push(limit(async () => {
-          if (cancelled) return;
-          const buffer = await fetchImageAsBuffer(cloudfrontBase + reg.aadharKey);
-          if (buffer) {
-            const imageId = workbook.addImage({ buffer, extension: 'jpeg' });
-            worksheet.addImage(imageId, {
-              tl: { col: worksheet.getColumn('aadhar').number - 1, row: rowNumber - 1 },
-              ext: imageSize,
-              editAs: 'oneCell',
-            });
-          } else {
-            failedImages.push({ row: rowNumber, type: 'aadhar', key: reg.aadharKey });
-          }
-          self.postMessage({ type: 'progress', value: (imageTasks.length / (dataToExport.length * 2)) * 100 });
-        }));
-      }
-      if (i % 10 === 0) self.postMessage({ type: 'progress', value: (i / dataToExport.length) * 100 });
     }
     await Promise.all(imageTasks);
     if (cancelled) return self.postMessage({ type: 'cancelled' });

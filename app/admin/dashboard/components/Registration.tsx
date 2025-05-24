@@ -110,6 +110,7 @@ export function Registration() {
     // --- Export Dialog States ---
     const [exportLoading, setExportLoading] = useState(false);
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+    const [includeImages, setIncludeImages] = useState(true);
     const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt' | 'city' | 'village'>('createdAt');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [advancedFilters, setAdvancedFilters] = useState({
@@ -782,7 +783,8 @@ export function Registration() {
         setExportLoading(true);
         setIsExportDialogOpen(false);
 
-        const columns = [
+        // Define base columns that are always included
+        const baseColumns = [
             { header: 'ID', key: 'id', width: 18 },
             { header: 'Full Name', key: 'fullName', width: 22 },
             { header: 'Age', key: 'age', width: 8 },
@@ -802,9 +804,15 @@ export function Registration() {
             { header: 'Form Type', key: 'formType', width: 10 },
             { header: 'Created At', key: 'createdAt', width: 20 },
             { header: 'Status', key: 'status', width: 14 },
+        ];
+        
+        // Add image columns only if includeImages is true
+        const imageColumns = includeImages ? [
             { header: 'Photo', key: 'photo', width: 20 },
             { header: 'Aadhar', key: 'aadhar', width: 20 },
-        ];
+        ] : [];
+        
+        const columns = [...baseColumns, ...imageColumns];
         const imageSize = { width: 80, height: 100 };
         const registrationsObj = { all: registrations, filtered: filteredRegistrations };
         // Store the worker instance for cancellation
@@ -813,6 +821,7 @@ export function Registration() {
             filtered: type === 'filtered',
             imageSize: imageSize,
             columns: columns,
+            includeImages: includeImages,
             onProgress: () => { },
             onDone: (buf: ArrayBuffer, failedImages: string[]) => {
                 setExportLoading(false);
@@ -896,6 +905,18 @@ export function Registration() {
                         <DialogTitle>Export Registrations</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col gap-4 mt-2">
+                        <div className="flex items-center space-x-2 mb-2">
+                            <input
+                                type="checkbox"
+                                id="include-images"
+                                checked={includeImages}
+                                onChange={(e) => setIncludeImages(e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <label htmlFor="include-images" className="text-sm font-medium text-gray-700">
+                                Include images in export
+                            </label>
+                        </div>
                         <Button onClick={() => handleExport('all')} disabled={exportLoading} className="w-full">Complete Data Export</Button>
                         <Button onClick={() => handleExport('filtered')} disabled={exportLoading} className="w-full">Current Filtered Data Export</Button>
                     </div>
