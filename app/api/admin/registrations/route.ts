@@ -8,10 +8,25 @@ export async function GET() {
   try {
     const command = new ScanCommand({
       TableName: TABLE_NAME,
+      Limit: 1000,
     });
 
-    const { Items } = await dynamoDb.send(command);
-    return NextResponse.json(Items);
+    // eslint-disable-next-line prefer-const
+    let { Items, LastEvaluatedKey } = await dynamoDb.send(command);
+    const allItems = Items;
+    // If there are more records (i.e., LastEvaluatedKey is not null), fetch them too
+    while (LastEvaluatedKey) {
+      const nextCommand = new ScanCommand({
+        TableName: TABLE_NAME,
+        ExclusiveStartKey: LastEvaluatedKey,
+        Limit: 1000,
+      });
+      const { Items: nextItems, LastEvaluatedKey: nextLastKey } = await dynamoDb.send(nextCommand);
+      allItems!.push(...nextItems!);
+      LastEvaluatedKey = nextLastKey;
+    }
+
+    return NextResponse.json(allItems);
   } catch (error) {
     console.error('Error fetching registrations:', error);
     return NextResponse.json(
