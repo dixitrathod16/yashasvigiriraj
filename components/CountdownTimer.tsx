@@ -98,7 +98,7 @@ export function CountdownTimer({ targetDate, onCountdownComplete, showCard = tru
                 <Card className="bg-white/90 shadow-lg border-2 border-primary/20">
                     <CardHeader className="space-y-4">
                         <div className="text-center text-sm md:text-base text-gray-700 bg-primary/5 p-4 rounded-lg border border-primary/10">
-                            <p className="font-medium">Registration will begin on {targetDate.toLocaleDateString('en-US', {
+                            <p className="font-medium">Registration will close on {targetDate.toLocaleDateString('en-US', {
                                 year: 'numeric',
                                 month: 'long',
                                 day: 'numeric',
@@ -122,7 +122,7 @@ export function CountdownTimer({ targetDate, onCountdownComplete, showCard = tru
             ) : (
                 <>
                     <div className="text-center text-sm md:text-base text-gray-700 bg-primary/5 p-4 mb-4 rounded-lg border border-primary/10">
-                        <p className="font-medium">Registration will begin on {targetDate.toLocaleDateString('en-US', {
+                        <p className="font-medium">Registration will close on {targetDate.toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',

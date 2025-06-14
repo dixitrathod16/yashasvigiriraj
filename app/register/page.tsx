@@ -522,12 +522,12 @@ export default function RegisterPage() {
   }>({});
   const [photoInputKey, setPhotoInputKey] = useState(0);
   const [aadharInputKey, setAadharInputKey] = useState(0);
-  const [hasRegistrationStarted, setHasRegistrationStarted] = useState(new Date() >= registrationStartDate);
+  const [hasRegistrationEnded, setHasRegistrationEnded] = useState(new Date() >= registrationStartDate);
   const [agreedToRules, setAgreedToRules] = useState(false);
   const [agreedToReview, setAgreedToReview] = useState(false);
 
   const handleCountdownComplete = () => {
-    setHasRegistrationStarted(true);
+    setHasRegistrationEnded(true);
   };
 
   // Handler for category selection
@@ -1323,7 +1323,7 @@ export default function RegisterPage() {
       <RegistrationNavigation />
       <main className="flex-1 bg-gradient-to-r from-primary/10 to-secondary/10 pt-20">
         <div className="container mx-auto px-4 md:px-10 py-8 md:py-12 space-y-8">
-          {!hasRegistrationStarted ? (
+          {!hasRegistrationEnded ? (
             <>
               <Card className="w-full p-3 md:p-8 border-2 border-primary/20">
                 <CardContent className="px-0 md:p-8 max-w-[1600px] mx-auto w-full">
@@ -1343,26 +1343,26 @@ export default function RegisterPage() {
                         onCountdownComplete={handleCountdownComplete}
                         showCard={false}
                       />
-                      <div className="flex justify-center"> {/* Flex container to center the button */}
-                        <Button
-                          className="mt-4" // Add margin for spacing
-                          onClick={() => { if (typeof window !== 'undefined') window.open('/', '_self'); }} // Redirect to home page
-                        >
-                          Go Back to Home
-                        </Button>
-                      </div>
                     </motion.div>
                   </AnimatePresence>
                 </CardContent>
               </Card>
-            </>
-          ) : (
-            <>
+
               {step === 'categories' && (
-                <CategorySelection
-                  categories={categories}
-                  handleCategorySelect={memoizedHandleCategorySelect}
-                />
+                <>
+                  <CategorySelection
+                    categories={categories}
+                    handleCategorySelect={memoizedHandleCategorySelect}
+                  />
+                  <div className="flex justify-center"> {/* Flex container to center the button */}
+                    <Button
+                      className="mt-4" // Add margin for spacing
+                      onClick={() => { if (typeof window !== 'undefined') window.open('/', '_self'); }} // Redirect to home page
+                    >
+                      Go Back to Home
+                    </Button>
+                  </div>
+                </>
               )}
               {step === 'rules' && formType && (
                 <RulesStep
@@ -2040,7 +2040,7 @@ export default function RegisterPage() {
                           {loading ? (
                             <span className="flex items-center justify-center gap-2">
                               <Loader2 className="animate-spin w-5 h-5" />
-                                Submitting...
+                              Submitting...
                             </span>
                           ) : 'प्रस्तुत करें / Submit'}
                         </Button>
@@ -2099,6 +2099,31 @@ export default function RegisterPage() {
                 </SuccessStep>
               )}
             </>
+          ) : (
+            <motion.div
+              key="registration-closed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-4xl mx-auto text-center space-y-6 py-8"
+            >
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-400 rounded-lg p-6">
+                <h3 className="text-2xl font-bold text-orange-500 dark:text-orange-400 mb-3">
+                  Registration is now closed
+                </h3>
+                <p className="text-orange-500 dark:text-orange-400">
+                  Thank you for showing interest. We will get back to you soon with more details.
+                </p>
+              </div>
+              <div className="flex justify-center"> {/* Flex container to center the button */}
+                <Button
+                  className="mt-4" // Add margin for spacing
+                  onClick={() => { if (typeof window !== 'undefined') window.open('/', '_self'); }} // Redirect to home page
+                >
+                  Go Back to Home
+                </Button>
+              </div>
+            </motion.div>
           )}
         </div>
       </main>
