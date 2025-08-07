@@ -25,7 +25,7 @@ import { Dialog as PreviewDialog, DialogContent as PreviewDialogContent } from "
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -110,6 +110,7 @@ export function Registration() {
     // --- Export Dialog States ---
     const [exportLoading, setExportLoading] = useState(false);
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+    const [isContactExportDialogOpen, setIsContactExportDialogOpen] = useState(false);
     const [includeImages, setIncludeImages] = useState(true);
     const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt' | 'city' | 'village'>('createdAt');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -483,6 +484,45 @@ export function Registration() {
         setIsEditing(true);
     };
 
+    const handleDelete = async (registration: Registration) => {
+        if (!window.confirm(`Are you sure you want to delete the registration for ${registration.fullName}? This action cannot be undone.`)) {
+            return;
+        }
+
+        setStatusActionLoading({ id: registration.id, action: 'delete' });
+        try {
+            const response = await fetch(`/api/admin/registrations`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    formType: registration.formType,
+                    aadharNumber: registration.aadharNumber,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete registration');
+            }
+
+            // Remove the registration from local state
+            const updatedRegistrations = registrations.filter(r => r.id !== registration.id);
+            setRegistrations(updatedRegistrations);
+            
+            // Close any open dialogs if the deleted registration was being viewed
+            if (selectedRegistration?.id === registration.id) {
+                setIsViewDialogOpen(false);
+                setSelectedRegistration(null);
+            }
+
+            toast.success('Registration deleted successfully');
+        } catch (error) {
+            console.error('Error deleting registration:', error);
+            toast.error('Failed to delete registration');
+        } finally {
+            setStatusActionLoading({ id: null, action: null });
+        }
+    };
+
     // Validation logic (adapted from register/page.tsx)
     function validateEditForm(form: Partial<Registration>): Record<string, string> {
         const errors: Record<string, string> = {};
@@ -852,8 +892,61 @@ export function Registration() {
         });
     }
 
+    // VCF export function (contacts)
+    function handleExportVcf(type: 'all' | 'filtered') {
+        try {
+            setIsContactExportDialogOpen(false);
+            const list = type === 'filtered' ? filteredRegistrations : registrations;
 
+            const vcfEscape = (val: string | number | undefined | null) => {
+                const s = val === undefined || val === null ? '' : String(val);
+                return s
+                    .replace(/\\/g, "\\\\")
+                    .replace(/\n|\r\n/g, "\\n")
+                    .replace(/;/g, "\\;")
+                    .replace(/,/g, "\\,");
+            };
 
+            const toVCard = (reg: Registration) => {
+                const lines: string[] = [];
+                const firstName = vcfEscape(reg.id);
+                const lastName = vcfEscape(reg.fullName);
+                
+                lines.push('BEGIN:VCARD');
+                lines.push('VERSION:3.0');
+                // N format: Last;First;Middle;Prefix;Suffix
+                lines.push(`N:${lastName};${firstName};;;`);
+                lines.push(`FN:${firstName} ${lastName}`);
+
+                // Only include WhatsApp number as phone
+                if (reg.whatsappNumber) {
+                    const whatsappNum = String(reg.whatsappNumber).trim();
+                    if (whatsappNum) {
+                        lines.push(`TEL;TYPE=CELL:${vcfEscape(whatsappNum)}`);
+                    }
+                }
+
+                if (reg.id) lines.push(`UID:${vcfEscape(reg.id)}`);
+
+                lines.push('END:VCARD');
+                return lines.join('\r\n');
+            };
+
+            const vcf = list.map(toVCard).filter(Boolean).join('\r\n');
+            const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `contacts_${type}_${new Date().toISOString().slice(0, 10)}.vcf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('VCF export failed:', err);
+            toast.error('Failed to export contacts (.vcf)');
+        }
+    }
 
     // --- Export Progress Modal Render ---
     // Place this near the root of your Registration component
@@ -881,9 +974,21 @@ export function Registration() {
                     ) : (
                         <>
                             <Download className="w-4 h-4" />
-                            Export
+                            Export Data
                         </>
                     )}
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() => setIsContactExportDialogOpen(true)}
+                    disabled={exportLoading}
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Export Contacts
                 </Button>
                 {exportLoading && (
                     <Button
@@ -902,7 +1007,7 @@ export function Registration() {
             <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
                 <DialogContent className="w-[320px] max-w-[95vw]">
                     <DialogHeader>
-                        <DialogTitle>Export Registrations</DialogTitle>
+                        <DialogTitle>Export Data</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col gap-4 mt-2">
                         <div className="flex items-center space-x-2 mb-2">
@@ -919,6 +1024,20 @@ export function Registration() {
                         </div>
                         <Button onClick={() => handleExport('all')} disabled={exportLoading} className="w-full">Complete Data Export</Button>
                         <Button onClick={() => handleExport('filtered')} disabled={exportLoading} className="w-full">Current Filtered Data Export</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={isContactExportDialogOpen} onOpenChange={setIsContactExportDialogOpen}>
+                <DialogContent className="w-[320px] max-w-[95vw]">
+                    <DialogHeader>
+                        <DialogTitle>Export Contacts</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4 mt-2">
+                        <div className="text-sm text-gray-600 mb-2">
+                            Export contacts as .vcf file (ID as first name, full name as last name, WhatsApp number only)
+                        </div>
+                        <Button onClick={() => handleExportVcf('all')} disabled={exportLoading} className="w-full">All Contacts (.vcf)</Button>
+                        <Button onClick={() => handleExportVcf('filtered')} disabled={exportLoading} className="w-full">Filtered Contacts (.vcf)</Button>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -1242,7 +1361,25 @@ export function Registration() {
                     className="p-4 space-y-2 cursor-pointer hover:shadow-lg transition-shadow"
                     onClick={() => handleViewDetails(reg)}
                 >
-                    <div className="text-xs text-gray-500 mb-1">ID: {reg.id}</div>
+                    <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
+                        <span>ID: {reg.id}</span>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={e => { e.stopPropagation(); handleDelete(reg); }}
+                            disabled={statusActionLoading.id === reg.id}
+                            className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        >
+                            {statusActionLoading.id === reg.id && statusActionLoading.action === 'delete' ? (
+                                <svg className="animate-spin w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10" strokeOpacity=".25" />
+                                    <path d="M4 12a8 8 0 018-8" strokeOpacity=".75" />
+                                </svg>
+                            ) : (
+                                <Trash2 className="w-3 h-3" />
+                            )}
+                        </Button>
+                    </div>
                     <div className="flex justify-between items-start">
                         <div>
                             <h3 className="font-semibold">{reg.fullName}</h3>
@@ -1397,6 +1534,7 @@ export function Registration() {
                             <TableHead>Gender</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Actions</TableHead>
+                            <TableHead className="w-16 text-center">Delete</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1499,6 +1637,24 @@ export function Registration() {
                                             </Button>
                                         )}
                                     </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={e => { e.stopPropagation(); handleDelete(reg); }}
+                                        disabled={statusActionLoading.id === reg.id}
+                                        className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                    >
+                                        {statusActionLoading.id === reg.id && statusActionLoading.action === 'delete' ? (
+                                            <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="10" strokeOpacity=".25" />
+                                                <path d="M4 12a8 8 0 018-8" strokeOpacity=".75" />
+                                            </svg>
+                                        ) : (
+                                            <Trash2 className="w-4 h-4" />
+                                        )}
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}
