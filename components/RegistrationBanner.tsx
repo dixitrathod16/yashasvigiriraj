@@ -7,6 +7,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 // import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { CountdownTimer } from "@/components/CountdownTimer"
 
 export function RegistrationBanner() {
@@ -213,6 +214,17 @@ export function RegistrationBanner() {
                 <p className="text-orange-500 dark:text-orange-400">
                   Thank you for showing interest. We will get back to you soon with more details.
                 </p>
+              </div>
+              <div className="flex justify-center">
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Link href="/check-status" target="_blank" rel="noopener noreferrer">
+                    Check Status
+                  </Link>
+                </Button>
               </div>
             </motion.div>
           )}

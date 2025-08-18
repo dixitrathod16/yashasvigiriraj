@@ -6,13 +6,15 @@ import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const menuItems = [
+type MenuItem = { name: string; href: string; newTab?: boolean }
+
+const menuItems: MenuItem[] = [
   { name: 'Home', href: '#home' },
   { name: 'Blessings', href: '#blessings' },
   // { name: 'Gallery', href: '#videos' },
   { name: 'Videos', href: '#videos' },
   { name: 'Images', href: '#images' },
-  { name: 'Registration', href: '#registration' },
+  { name: 'Check Status', href: '/check-status', newTab: true },
   { name: 'About Us', href: '#about-us' },
   { name: 'Jeevith Mahotsav', href: '#jeevith-mahotsav'},
   { name: 'Event Details', href: '#event-details' },
@@ -101,7 +103,9 @@ export function Navigation() {
               <Link
                 href={item.href}
                 className="text-gray-700 hover:text-primary transition-colors px-4 py-2 rounded-full hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                onClick={(e) => handleClick(e, item.href)}
+                onClick={item.href.startsWith('#') ? (e) => handleClick(e, item.href) : undefined}
+                target={item.newTab ? '_blank' : undefined}
+                rel={item.newTab ? 'noopener noreferrer' : undefined}
               >
                 {item.name}
               </Link>
@@ -140,8 +144,12 @@ export function Navigation() {
                   className="block px-6 py-3 text-gray-700 hover:text-primary hover:bg-primary/10 transition-colors"
                   onClick={(e) => {
                     setIsOpen(false);
-                    handleClick(e, item.href);
+                    if (item.href.startsWith('#')) {
+                      handleClick(e, item.href);
+                    }
                   }}
+                  target={item.newTab ? '_blank' : undefined}
+                  rel={item.newTab ? 'noopener noreferrer' : undefined}
                 >
                   {item.name}
                 </Link>
