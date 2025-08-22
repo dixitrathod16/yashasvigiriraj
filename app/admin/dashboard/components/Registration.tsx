@@ -19,6 +19,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import Image from "next/image";
 import { Dialog as PreviewDialog, DialogContent as PreviewDialogContent } from "@/components/ui/dialog";
@@ -53,7 +54,7 @@ interface Registration {
     aadharKey: string;
     formType: 'SAN' | 'CHA' | 'NAV';
     createdAt: string;
-    status: 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED';
+    status: 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED' | 'INACTIVE';
 }
 
 // Categories data
@@ -101,7 +102,7 @@ export function Registration() {
     const [editLoading, setEditLoading] = useState(false);
     const [statusActionLoading, setStatusActionLoading] = useState<{ id: string | null, action: string | null }>({ id: null, action: null });
     const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'SAN' | 'CHA' | 'NAV'>('ALL');
-    const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'SHORTLISTED' | 'APPROVED'>('ALL');
+    const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'INACTIVE'>('ALL');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const pageSizeOptions = [5, 10, 20, 50];
@@ -145,6 +146,13 @@ export function Registration() {
     const [newAadharFile, setNewAadharFile] = useState<File | null>(null);
     const [newAadharPreview, setNewAadharPreview] = useState<string | null>(null);
     const [imageErrors, setImageErrors] = useState<{ photo?: string; aadhar?: string }>({});
+    // Multiselect state
+    const [selectedRegistrations, setSelectedRegistrations] = useState<Set<string>>(new Set());
+    const [bulkStatus, setBulkStatus] = useState<RegistrationStatus | ''>('');
+    const [bulkActionLoading, setBulkActionLoading] = useState(false);
+    // Confirmation dialog state
+    const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+    const [pendingBulkAction, setPendingBulkAction] = useState<RegistrationStatus | ''>('');
 
 
     // Calculate totals per category
@@ -188,19 +196,30 @@ export function Registration() {
     const baseFilteredRegistrations = sortedRegistrations.filter((reg: Registration) => {
         if (categoryFilter !== 'ALL' && reg.formType !== categoryFilter) return false;
         // Advanced filters (same as before, but skip status)
-        if (
-            advancedFilters.id &&
-            !reg.id
-                .toLowerCase()
-                .trim()
-                .normalize('NFKD')
-                .includes(
-                    advancedFilters.id
+        if (advancedFilters.id) {
+            const idFilter = advancedFilters.id.toLowerCase().trim().normalize('NFKD');
+            // Check if the filter contains comma-separated values
+            if (idFilter.includes(',')) {
+                // Split by comma and check if any of the IDs match
+                const ids = idFilter.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                const matches = ids.some(id => 
+                    reg.id
                         .toLowerCase()
                         .trim()
                         .normalize('NFKD')
-                )
-        ) return false;
+                        .includes(id)
+                );
+                if (!matches) return false;
+            } else {
+                // Single ID filter (existing logic)
+                if (!reg.id
+                    .toLowerCase()
+                    .trim()
+                    .normalize('NFKD')
+                    .includes(idFilter)
+                ) return false;
+            }
+        }
         if (
             advancedFilters.fullName &&
             !reg.fullName
@@ -327,6 +346,105 @@ export function Registration() {
     const totalPages = Math.ceil(filteredRegistrations.length / pageSize);
     const paginatedRegistrations = filteredRegistrations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+    // Multiselect helper functions
+    const toggleRegistrationSelection = (id: string) => {
+        setSelectedRegistrations(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
+    };
+
+    // Get all filtered registrations (not just paginated ones)
+    const allFilteredRegistrations = useMemo(() => {
+        return baseFilteredRegistrations.filter(reg => {
+            if (statusFilter !== 'ALL' && reg.status !== statusFilter) return false;
+            return true;
+        });
+    }, [baseFilteredRegistrations, statusFilter]);
+
+    const selectAllFiltered = () => {
+        const newSet = new Set(selectedRegistrations);
+        allFilteredRegistrations.forEach(reg => newSet.add(reg.id));
+        setSelectedRegistrations(newSet);
+    };
+
+    const deselectAllFiltered = () => {
+        const newSet = new Set(selectedRegistrations);
+        allFilteredRegistrations.forEach(reg => newSet.delete(reg.id));
+        setSelectedRegistrations(newSet);
+    };
+
+    const isAllFilteredSelected = allFilteredRegistrations.length > 0 && 
+        allFilteredRegistrations.every(reg => selectedRegistrations.has(reg.id));
+
+    const clearSelection = () => {
+        setSelectedRegistrations(new Set());
+    };
+
+    // Bulk status update function
+    const handleBulkStatusUpdate = async () => {
+        if (!bulkStatus || selectedRegistrations.size === 0) return;
+        
+        // Show confirmation dialog instead of directly updating
+        setPendingBulkAction(bulkStatus);
+        setIsConfirmDialogOpen(true);
+    };
+    
+    // Actual bulk update function that gets called after confirmation
+    const performBulkStatusUpdate = async () => {
+        if (!pendingBulkAction || selectedRegistrations.size === 0) return;
+        
+        setBulkActionLoading(true);
+        setIsConfirmDialogOpen(false);
+        try {
+            // Get the selected registrations with their formType and aadharNumber
+            // Use all registrations, not just paginated ones
+            const registrationsToUpdate = registrations
+                .filter(reg => selectedRegistrations.has(reg.id))
+                .map(reg => ({
+                    formType: reg.formType,
+                    aadharNumber: reg.aadharNumber,
+                    status: pendingBulkAction
+                }));
+            
+            // Send bulk update request
+            const response = await fetch(`/api/admin/registrations`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(registrationsToUpdate)
+            });
+            
+            if (response.ok) {
+                // Update local state
+                setRegistrations(prev => 
+                    prev.map(reg => 
+                        selectedRegistrations.has(reg.id) 
+                            ? { ...reg, status: pendingBulkAction } 
+                            : reg
+                    )
+                );
+                
+                toast.success(`${selectedRegistrations.size} registration(s) updated successfully`);
+                clearSelection();
+                setBulkStatus('PENDING'); // Reset bulk status
+                setPendingBulkAction(''); // Reset pending action
+            } else {
+                const errorData = await response.json();
+                toast.error(errorData.error || 'Failed to update registrations');
+            }
+        } catch (error) {
+            console.error('Bulk update error:', error);
+            toast.error('Failed to update registrations');
+        } finally {
+            setBulkActionLoading(false);
+        }
+    };
+
     // Category filter buttons
     const categoryButtons = [
         { id: 'ALL', label: 'All', count: registrations.length },
@@ -339,12 +457,14 @@ export function Registration() {
         PENDING: baseFilteredRegistrations.filter(reg => reg.status === 'PENDING').length,
         SHORTLISTED: baseFilteredRegistrations.filter(reg => reg.status === 'SHORTLISTED').length,
         APPROVED: baseFilteredRegistrations.filter(reg => reg.status === 'APPROVED').length,
+        INACTIVE: baseFilteredRegistrations.filter(reg => reg.status === 'INACTIVE').length,
     };
     const statusButtons = [
         { id: 'ALL', label: 'All', count: statusCounts.ALL },
         { id: 'PENDING', label: 'Pending', count: statusCounts.PENDING },
         { id: 'SHORTLISTED', label: 'Shortlisted', count: statusCounts.SHORTLISTED },
         { id: 'APPROVED', label: 'Approved', count: statusCounts.APPROVED },
+        { id: 'INACTIVE', label: 'Inactive', count: statusCounts.INACTIVE },
     ];
 
     // Helper for filter chips
@@ -485,39 +605,80 @@ export function Registration() {
     };
 
     const handleDelete = async (registration: Registration) => {
-        if (!window.confirm(`Are you sure you want to delete the registration for ${registration.fullName}? This action cannot be undone.`)) {
+        if (!window.confirm(`Are you sure you want to mark this registration as inactive for ${registration.fullName}?`)) {
             return;
         }
 
         setStatusActionLoading({ id: registration.id, action: 'delete' });
         try {
+            // Perform soft delete by updating status to 'INACTIVE'
             const response = await fetch(`/api/admin/registrations`, {
-                method: 'DELETE',
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     formType: registration.formType,
                     aadharNumber: registration.aadharNumber,
+                    status: 'INACTIVE',
                 }),
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to delete registration');
-            }
+            if (!response.ok) throw new Error('Failed to mark registration as inactive');
 
-            // Remove the registration from local state
-            const updatedRegistrations = registrations.filter(r => r.id !== registration.id);
+            // Update the registration status in the local state
+            const updatedRegistrations = registrations.map(reg => 
+                reg.id === registration.id ? { ...reg, status: 'INACTIVE' as const } : reg
+            );
             setRegistrations(updatedRegistrations);
             
-            // Close any open dialogs if the deleted registration was being viewed
+            // Update selected registration if it's the one being deleted
             if (selectedRegistration?.id === registration.id) {
-                setIsViewDialogOpen(false);
-                setSelectedRegistration(null);
+                setSelectedRegistration({ ...selectedRegistration, status: 'INACTIVE' });
             }
 
-            toast.success('Registration deleted successfully');
+            toast.success('Registration marked as inactive successfully');
         } catch (error) {
-            console.error('Error deleting registration:', error);
-            toast.error('Failed to delete registration');
+            console.error('Error marking registration as inactive:', error);
+            toast.error('Failed to mark registration as inactive');
+        } finally {
+            setStatusActionLoading({ id: null, action: null });
+        }
+    };
+
+    const handleUndoDelete = async (registration: Registration) => {
+        if (!window.confirm(`Are you sure you want to restore this registration for ${registration.fullName}?`)) {
+            return;
+        }
+
+        setStatusActionLoading({ id: registration.id, action: 'undo-delete' });
+        try {
+            // Restore registration by updating status back to 'PENDING'
+            const response = await fetch(`/api/admin/registrations`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    formType: registration.formType,
+                    aadharNumber: registration.aadharNumber,
+                    status: 'PENDING',
+                }),
+            });
+
+            if (!response.ok) throw new Error('Failed to restore registration');
+
+            // Update the registration status in the local state
+            const updatedRegistrations = registrations.map(reg => 
+                reg.id === registration.id ? { ...reg, status: 'PENDING' as const } : reg
+            );
+            setRegistrations(updatedRegistrations);
+            
+            // Update selected registration if it's the one being restored
+            if (selectedRegistration?.id === registration.id) {
+                setSelectedRegistration({ ...selectedRegistration, status: 'PENDING' });
+            }
+
+            toast.success('Registration restored successfully');
+        } catch (error) {
+            console.error('Error restoring registration:', error);
+            toast.error('Failed to restore registration');
         } finally {
             setStatusActionLoading({ id: null, action: null });
         }
@@ -1184,6 +1345,53 @@ export function Registration() {
     // Filter bar with advanced filter button on the right
     const filterBar = (
         <div className="flex flex-col gap-4 mb-4 w-full">
+            {/* Bulk Actions */}
+            {selectedRegistrations.size > 0 && (
+                <div className="flex flex-col md:flex-row md:items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-blue-800">
+                            {selectedRegistrations.size} registration{selectedRegistrations.size !== 1 ? 's' : ''} selected
+                        </span>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={clearSelection}
+                            className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                        >
+                            Clear
+                        </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-blue-700">Change status to:</span>
+                        <div className="flex items-center gap-2">
+                            <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value as RegistrationStatus)}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="PENDING">Pending</SelectItem>
+                                    <SelectItem value="SHORTLISTED">Shortlisted</SelectItem>
+                                    <SelectItem value="APPROVED">Approved</SelectItem>
+                                    <SelectItem value="INACTIVE">Inactive (Soft Delete)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button 
+                                onClick={handleBulkStatusUpdate}
+                                disabled={!bulkStatus || selectedRegistrations.size === 0 || bulkActionLoading}
+                            >
+                                {bulkActionLoading ? 'Updating...' : 'Update Status'}
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                onClick={clearSelection}
+                                disabled={selectedRegistrations.size === 0}
+                            >
+                                Clear Selection
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Master Filter: Category */}
             <div className="flex flex-col gap-2">
                 <span className="font-semibold text-sm text-gray-700">Category</span>
@@ -1362,23 +1570,36 @@ export function Registration() {
                     onClick={() => handleViewDetails(reg)}
                 >
                     <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
-                        <span>ID: {reg.id}</span>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={e => { e.stopPropagation(); handleDelete(reg); }}
-                            disabled={statusActionLoading.id === reg.id}
-                            className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600 transition-colors"
-                        >
-                            {statusActionLoading.id === reg.id && statusActionLoading.action === 'delete' ? (
-                                <svg className="animate-spin w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <circle cx="12" cy="12" r="10" strokeOpacity=".25" />
-                                    <path d="M4 12a8 8 0 018-8" strokeOpacity=".75" />
-                                </svg>
-                            ) : (
-                                <Trash2 className="w-3 h-3" />
-                            )}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={selectedRegistrations.has(reg.id)}
+                                onChange={(e) => {
+                                    e.stopPropagation();
+                                    toggleRegistrationSelection(reg.id);
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <span>ID: {reg.id}</span>
+                        </div>
+                        {reg.status !== 'INACTIVE' && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={e => { e.stopPropagation(); handleDelete(reg); }}
+                                disabled={statusActionLoading.id === reg.id}
+                                className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            >
+                                {statusActionLoading.id === reg.id && statusActionLoading.action === 'delete' ? (
+                                    <svg className="animate-spin w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" strokeOpacity=".25" />
+                                        <path d="M4 12a8 8 0 018-8" strokeOpacity=".75" />
+                                    </svg>
+                                ) : (
+                                    <Trash2 className="w-3 h-3" />
+                                )}
+                            </Button>
+                        )}
                     </div>
                     <div className="flex justify-between items-start">
                         <div>
@@ -1493,6 +1714,14 @@ export function Registration() {
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-12">
+                                <input
+                                    type="checkbox"
+                                    checked={isAllFilteredSelected}
+                                    onChange={isAllFilteredSelected ? deselectAllFiltered : selectAllFiltered}
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                            </TableHead>
                             <TableHead
                                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                                 onClick={() => { setSortColumn('id'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
@@ -1540,6 +1769,14 @@ export function Registration() {
                     <TableBody>
                         {paginatedRegistrations.map((reg: Registration) => (
                             <TableRow key={reg.id}>
+                                <TableCell>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedRegistrations.has(reg.id)}
+                                        onChange={() => toggleRegistrationSelection(reg.id)}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                </TableCell>
                                 <TableCell>{reg.id}</TableCell>
                                 <TableCell>{reg.fullName}</TableCell>
                                 <TableCell>
@@ -1639,22 +1876,24 @@ export function Registration() {
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={e => { e.stopPropagation(); handleDelete(reg); }}
-                                        disabled={statusActionLoading.id === reg.id}
-                                        className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                    >
-                                        {statusActionLoading.id === reg.id && statusActionLoading.action === 'delete' ? (
-                                            <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                <circle cx="12" cy="12" r="10" strokeOpacity=".25" />
-                                                <path d="M4 12a8 8 0 018-8" strokeOpacity=".75" />
-                                            </svg>
-                                        ) : (
-                                            <Trash2 className="w-4 h-4" />
-                                        )}
-                                    </Button>
+                                    {reg.status !== 'INACTIVE' && (
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={e => { e.stopPropagation(); handleDelete(reg); }}
+                                            disabled={statusActionLoading.id === reg.id}
+                                            className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                        >
+                                            {statusActionLoading.id === reg.id && statusActionLoading.action === 'delete' ? (
+                                                <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <circle cx="12" cy="12" r="10" strokeOpacity=".25" />
+                                                    <path d="M4 12a8 8 0 018-8" strokeOpacity=".75" />
+                                                </svg>
+                                            ) : (
+                                                <Trash2 className="w-4 h-4" />
+                                            )}
+                                        </Button>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -2051,6 +2290,7 @@ export function Registration() {
                                     <span className="text-sm font-medium text-gray-500 hidden sm:inline">Status:</span>
                                     <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-sm font-semibold ${selectedRegistration.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
                                         selectedRegistration.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                        selectedRegistration.status === 'INACTIVE' ? 'bg-gray-100 text-gray-700 line-through' :
                                             'bg-yellow-100 text-yellow-700'
                                         }`}>
                                         {selectedRegistration.status}
@@ -2180,6 +2420,30 @@ export function Registration() {
                                                     )}
                                                 </Button>
                                             )}
+                                            {selectedRegistration.status === 'INACTIVE' && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleUndoDelete(selectedRegistration)}
+                                                    size="sm"
+                                                    className="h-9 px-2 sm:px-3"
+                                                    title="Restore Registration"
+                                                    disabled={statusActionLoading.id === selectedRegistration.id}
+                                                >
+                                                    {statusActionLoading.id === selectedRegistration.id && statusActionLoading.action === 'undo-delete' ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeOpacity=".25" /><path d="M4 12a8 8 0 018-8" strokeOpacity=".75" /></svg>
+                                                            Restoring...
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                            </svg>
+                                                            <span className="hidden sm:inline ml-2">Restore</span>
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="outline"
                                                 onClick={() => handleEdit(selectedRegistration)}
@@ -2266,6 +2530,35 @@ export function Registration() {
                     )}
                 </PreviewDialogContent>
             </PreviewDialog>
+            {/* Confirmation Dialog */}
+            <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Bulk Status Update</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {pendingBulkAction === ('INACTIVE' as RegistrationStatus) ? (
+                            <>
+                                <p>You are about to mark <span className="font-bold">{selectedRegistrations.size}</span> registration(s) as <span className="font-bold">Inactive (Soft Delete)</span>.</p>
+                                <p className="mt-2 text-sm text-gray-500">These registrations will be hidden from regular views but can be restored later.</p>
+                            </>
+                        ) : (
+                            <>
+                                <p>You are about to update the status of <span className="font-bold">{selectedRegistrations.size}</span> registration(s) to <span className="font-bold">{pendingBulkAction}</span>.</p>
+                                <p className="mt-2 text-sm text-gray-500">This action cannot be undone.</p>
+                            </>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={performBulkStatusUpdate}>
+                            Confirm Update
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 } 
