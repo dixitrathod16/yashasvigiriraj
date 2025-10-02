@@ -64,6 +64,7 @@ interface ImageQuality {
   isBlurry: boolean;
   hasFace: boolean;
   isFrontFacing: boolean;
+  hasMultipleFaces: boolean;
   brightness: 'good' | 'too_dark' | 'too_bright';
   resolution: 'good' | 'low';
   score: number;
@@ -154,6 +155,12 @@ async function analyzeImageQuality(file: File): Promise<ImageQuality> {
         
         let hasFace = false;
         let isFrontFacing = false;
+        let hasMultipleFaces = false;
+        
+        if (detections.length > 1) {
+          hasMultipleFaces = true;
+          console.log(`⚠️ Multiple faces detected: ${detections.length}`);
+        }
         
         if (detections.length > 0) {
           hasFace = true;
@@ -226,6 +233,7 @@ async function analyzeImageQuality(file: File): Promise<ImageQuality> {
         let score = 100;
         if (isBlurry) score -= 20;
         if (!hasFace) score -= 50;
+        if (hasMultipleFaces) score -= 50;
         if (hasFace && !isFrontFacing) score -= 45;
         if (brightness !== 'good') score -= 10;
         if (resolution === 'low') score -= 5;
@@ -233,6 +241,7 @@ async function analyzeImageQuality(file: File): Promise<ImageQuality> {
         console.log('📊 Final Score:', score, {
           isBlurry,
           hasFace,
+          hasMultipleFaces,
           isFrontFacing,
           brightness,
           resolution
@@ -242,6 +251,7 @@ async function analyzeImageQuality(file: File): Promise<ImageQuality> {
           isBlurry,
           hasFace,
           isFrontFacing,
+          hasMultipleFaces,
           brightness,
           resolution,
           score
@@ -253,6 +263,7 @@ async function analyzeImageQuality(file: File): Promise<ImageQuality> {
           isBlurry: false,
           hasFace: true,
           isFrontFacing: true,
+          hasMultipleFaces: false,
           brightness: 'good',
           resolution: 'good',
           score: 100
@@ -480,6 +491,7 @@ async function processImageFile({
             const issues = [];
             if (quality.isBlurry) issues.push('image is blurry');
             if (!quality.hasFace) issues.push('no face detected');
+            if (quality.hasMultipleFaces) issues.push('multiple faces detected - only one person allowed');
             if (quality.hasFace && !quality.isFrontFacing) issues.push('face should be front-facing (not side view)');
             if (quality.brightness !== 'good') issues.push(`image is ${quality.brightness.replace('_', ' ')}`);
             if (quality.resolution === 'low') issues.push('resolution is too low');
@@ -952,6 +964,13 @@ export default function ArrivalDetailsPage() {
                                   <><X className="w-4 h-4 text-red-500" /><span className="text-red-700">No face detected</span></>
                                 )}
                               </div>
+                              <div className="flex items-center gap-2">
+                                {!imageQuality.hasMultipleFaces ? (
+                                  <><CheckCircle className="w-4 h-4 text-green-500" /><span className="text-green-700">Single person detected</span></>
+                                ) : (
+                                  <><X className="w-4 h-4 text-red-500" /><span className="text-red-700">Multiple faces detected - only one person allowed</span></>
+                                )}
+                              </div>
                               {imageQuality.hasFace && (
                                 <div className="flex items-center gap-2">
                                   {imageQuality.isFrontFacing ? (
@@ -1031,7 +1050,9 @@ export default function ArrivalDetailsPage() {
                       <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
-                          {photoError || 'Image quality does not meet requirements. Please upload a better quality photo to submit the form.'}
+                          {photoError || (imageQuality?.hasMultipleFaces 
+                            ? 'Multiple faces detected in the image. Please upload a photo with only one person.' 
+                            : 'Image quality does not meet requirements. Please upload a better quality photo to submit the form.')}
                         </AlertDescription>
                       </Alert>
                     )}
@@ -1041,20 +1062,20 @@ export default function ArrivalDetailsPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-4 pt-4">
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={handleReset}
-                      className="flex-1"
+                      className="flex-1 w-full"
                       disabled={loading}
                     >
                       रद्द करें / Cancel
                     </Button>
                     <Button
                       type="submit"
-                      className="flex-1"
-                      disabled={loading || !photoFile || (photoFile !== null && imageQuality !== null && imageQuality.score < 96)}
+                      className="flex-1 w-full"
+                      disabled={loading || !photoFile || (photoFile !== null && imageQuality !== null && (imageQuality.score < 96 || imageQuality.hasMultipleFaces))}
                     >
                       {loading ? (
                         <>
