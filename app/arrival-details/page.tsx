@@ -1087,12 +1087,12 @@ export default function ArrivalDetailsPage() {
                   <h2 className="text-3xl font-bold text-gray-900 mb-4">
                     सफलतापूर्वक प्रस्तुत किया गया!
                   </h2>
-                  <p className="text-xl text-gray-600 mb-2">
+                  {/* <p className="text-xl text-gray-600 mb-2">
                     Arrival Details Submitted Successfully!
                   </p>
                   <p className="text-lg text-gray-500">
                     आपके आगमन विवरण सफलतापूर्वक प्राप्त हो गए हैं।
-                  </p>
+                  </p> */}
                 </div>
 
                 {/* Social Share Section */}
@@ -1109,61 +1109,7 @@ export default function ArrivalDetailsPage() {
                         💡 Share this on WhatsApp, Facebook, or Instagram to spread the word!
                       </p>
 
-                      {/* Action Buttons - Before Image */}
-                      <div className="flex flex-col gap-3 max-w-sm mx-auto">
-                        {/* Native Share Button (Mobile) */}
-                        {typeof navigator !== 'undefined' && navigator.share && (
-                          <Button
-                            onClick={async () => {
-                              try {
-                                // Convert data URL to blob
-                                const response = await fetch(shareImageUrl);
-                                const blob = await response.blob();
-                                const file = new File([blob], `yatra-registration-${registration?.id}.jpg`, { type: 'image/jpeg' });
-
-                                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                                  await navigator.share({
-                                    title: 'Yatra Registration',
-                                    text: `I have registered for the Yatra! Registration ID: ${registration?.id}`,
-                                    files: [file],
-                                  });
-                                } else {
-                                  // Fallback to text-only share
-                                  await navigator.share({
-                                    title: 'Yatra Registration',
-                                    text: `I have registered for the Yatra! Registration ID: ${registration?.id}`,
-                                  });
-                                }
-                              } catch (err) {
-                                console.error('Share failed:', err);
-                              }
-                            }}
-                            size="lg"
-                            className="w-full justify-center"
-                          >
-                            <Share2 className="w-5 h-5 mr-2" />
-                            Share Now
-                          </Button>
-                        )}
-
-                        {/* Download Again Button */}
-                        <Button
-                          onClick={() => {
-                            const link = document.createElement('a');
-                            link.href = shareImageUrl;
-                            link.download = `yatra-registration-${registration?.id}.jpg`;
-                            link.click();
-                          }}
-                          size="lg"
-                          variant="outline"
-                          className="w-full justify-center"
-                        >
-                          <Download className="w-5 h-5 mr-2" />
-                          Download Again
-                        </Button>
-                      </div>
-
-                      {/* Share Image Preview - After Buttons */}
+                      {/* Share Image with Icon Overlay */}
                       <div className="relative mx-auto max-w-sm rounded-lg overflow-hidden shadow-lg">
                         <Image
                           src={shareImageUrl}
@@ -1173,6 +1119,57 @@ export default function ArrivalDetailsPage() {
                           className="w-full h-auto"
                           priority
                         />
+                        
+                        {/* Icon Overlay - Center */}
+                        <div className="absolute inset-0 flex items-center justify-center gap-6">
+                          {/* Native Share Icon (Mobile) */}
+                          {typeof navigator !== 'undefined' && navigator.share && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  // Convert data URL to blob
+                                  const response = await fetch(shareImageUrl);
+                                  const blob = await response.blob();
+                                  const file = new File([blob], `yatra-registration-${registration?.id}.jpg`, { type: 'image/jpeg' });
+
+                                  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                                    await navigator.share({
+                                      title: 'Yatra Registration',
+                                      text: `I have registered for the Yatra! Registration ID: ${registration?.id}`,
+                                      files: [file],
+                                    });
+                                  } else {
+                                    // Fallback to text-only share
+                                    await navigator.share({
+                                      title: 'Yatra Registration',
+                                      text: `I have registered for the Yatra! Registration ID: ${registration?.id}`,
+                                    });
+                                  }
+                                } catch (err) {
+                                  console.error('Share failed:', err);
+                                }
+                              }}
+                              className="w-16 h-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-xl transition-all hover:scale-110"
+                              aria-label="Share Now"
+                            >
+                              <Share2 className="w-8 h-8 text-gray-900" />
+                            </button>
+                          )}
+
+                          {/* Download Icon */}
+                          <button
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = shareImageUrl;
+                              link.download = `yatra-registration-${registration?.id}.jpg`;
+                              link.click();
+                            }}
+                            className="w-16 h-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-xl transition-all hover:scale-110"
+                            aria-label="Download Again"
+                          >
+                            <Download className="w-8 h-8 text-gray-900" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (
