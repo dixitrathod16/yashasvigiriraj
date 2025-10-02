@@ -55,6 +55,10 @@ interface Registration {
     formType: 'SAN' | 'CHA' | 'NAV';
     createdAt: string;
     status: 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED' | 'INACTIVE';
+    arrivalDate?: string;
+    arrivalPlace?: string;
+    idPhotoKey?: string;
+    travelDetailsSubmittedAt?: string;
 }
 
 // Categories data
@@ -1005,6 +1009,9 @@ export function Registration() {
             { header: 'Form Type', key: 'formType', width: 10 },
             { header: 'Created At', key: 'createdAt', width: 20 },
             { header: 'Status', key: 'status', width: 14 },
+            { header: 'Arrival Date', key: 'arrivalDate', width: 16 },
+            { header: 'Arrival Place', key: 'arrivalPlace', width: 16 },
+            { header: 'Travel Details Submitted', key: 'travelDetailsSubmittedAt', width: 20 },
         ];
         
         // Add image columns only if includeImages is true
@@ -2167,12 +2174,55 @@ export function Registration() {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Travel Details (if available) */}
+                                    {(selectedRegistration.arrivalDate || selectedRegistration.arrivalPlace || selectedRegistration.idPhotoKey) && (
+                                        <div className="space-y-2 pt-2 border-t">
+                                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Arrival Details
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                                {/* Arrival Date */}
+                                                {selectedRegistration.arrivalDate && (
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-medium text-gray-500">Arrival Date</Label>
+                                                        <p className="text-base font-medium text-gray-900">
+                                                            {new Date(selectedRegistration.arrivalDate).toLocaleDateString('en-GB', { 
+                                                                day: '2-digit', 
+                                                                month: 'short', 
+                                                                year: 'numeric' 
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {/* Arrival Place */}
+                                                {selectedRegistration.arrivalPlace && (
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-medium text-gray-500">Arrival Place</Label>
+                                                        <p className="text-base font-medium text-gray-900">{selectedRegistration.arrivalPlace}</p>
+                                                    </div>
+                                                )}
+                                                {/* Travel Details Submitted At */}
+                                                {selectedRegistration.travelDetailsSubmittedAt && (
+                                                    <div className="space-y-2 col-span-2">
+                                                        <Label className="text-sm font-medium text-gray-500">Submitted At</Label>
+                                                        <p className="text-sm text-gray-600">
+                                                            {new Date(selectedRegistration.travelDetailsSubmittedAt).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Right Column - Documents (view only) */}
-                                <div className="space-y-2 lg:border-l lg:pl-6">
+                                <div className="space-y-4 lg:border-l lg:pl-6">
                                     <div className="space-y-2">
-                                        <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
+                                        <h3 className="text-lg font-semibold text-gray-900">Registration Documents</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                             {/* Passport Photo */}
                                             <div className="space-y-1">
@@ -2281,6 +2331,40 @@ export function Registration() {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Passport Photo from Travel Details */}
+                                    {selectedRegistration.idPhotoKey && (
+                                        <div className="space-y-2 pt-4 border-t">
+                                            <h3 className="text-lg font-semibold text-gray-900">Arrival Document</h3>
+                                            <div className="space-y-1">
+                                                <Label className="text-sm font-medium text-gray-500">ID Card Photo (for Arrival)</Label>
+                                                <div
+                                                    className="relative aspect-[3/4] w-full max-w-[200px] border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
+                                                    onClick={() => {
+                                                        setPreviewImageUrl(`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.idPhotoKey}`);
+                                                        setPreviewImageAlt('ID Card Photo - Travel Details');
+                                                    }}
+                                                >
+                                                    <Image
+                                                        src={`https://d3b13419yglo3r.cloudfront.net/${selectedRegistration.idPhotoKey}`}
+                                                        alt="ID Card Photo"
+                                                        fill
+                                                        className="object-contain"
+                                                        sizes="(max-width: 768px) 100vw, 200px"
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/40 transition-opacity">
+                                                        <div className="flex flex-col items-center text-white">
+                                                            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                                            </svg>
+                                                            <span className="text-sm font-semibold">Click to Preview</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs text-center text-gray-500 mt-1">Click image to view full size</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

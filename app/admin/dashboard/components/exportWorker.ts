@@ -58,6 +58,10 @@ self.onmessage = async (e) => {
         ...reg,
         gender: reg.gender === 'M' ? 'Male' : 'Female',
         hasParticipatedBefore: reg.hasParticipatedBefore ? 'Yes' : 'No',
+        arrivalDetailsSubmitted: reg.arrivalDate ? 'Yes' : 'No',
+        arrivalDate: reg.arrivalDate ? new Date(reg.arrivalDate).toLocaleDateString('en-GB') : '',
+        arrivalPlace: reg.arrivalPlace ? reg.arrivalPlace : '',
+        travelDetailsSubmittedAt: reg.travelDetailsSubmittedAt ? new Date(reg.travelDetailsSubmittedAt).toLocaleString() : '',
         photo: '',
         aadhar: '',
       });

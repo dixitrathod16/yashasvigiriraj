@@ -28,7 +28,20 @@ export async function POST(request: Request) {
     // Generate pre-signed URLs for all files in parallel
     const uploadUrls = await Promise.all(
       files.map(async (file: { fileType: string; uploadType: string; key?: string }) => {
-        const prefix = file.uploadType === 'aadhar' ? 'aadhar/' : 'photos/';
+        let prefix;
+
+        switch(file.uploadType){
+          case 'aadhar':
+            prefix = 'aadhar/';
+            break;
+          case 'idPhoto':
+            prefix = 'idPhotos/';
+            break;
+          default:
+            prefix = 'photos/';
+            break;
+        }
+
         // Use provided key if present, else generate new
         const key = file.key || `${prefix}${uuidv4()}.${file.fileType.split('/')[1]}`;
         const command = new PutObjectCommand({
