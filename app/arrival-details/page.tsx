@@ -455,21 +455,34 @@ async function processImageFile({
   }
 
   // Compress and convert the image to webp
+  let compressedFile = workingFile;
   try {
     const imageCompression = (await import('browser-image-compression')).default;
     const initialQuality = workingFile.size < 2 * 1024 * 1024 ? 0.96 : 0.85;
-    const options = {
+    
+    // Try with WebWorker first, fallback to main thread if it fails
+    const baseOptions = {
       maxSizeMB: 4,
       maxWidthOrHeight: 1800,
-      useWebWorker: true,
       initialQuality,
       fileType: 'image/webp',
     };
-    const compressedFile = await imageCompression(workingFile, options);
+    
+    try {
+      compressedFile = await imageCompression(workingFile, { ...baseOptions, useWebWorker: true });
+      console.log('✅ Image compressed with WebWorker');
+    } catch (workerError) {
+      console.warn('⚠️ WebWorker compression failed, trying without WebWorker:', workerError);
+      // Retry without WebWorker
+      compressedFile = await imageCompression(workingFile, { ...baseOptions, useWebWorker: false });
+      console.log('✅ Image compressed without WebWorker');
+    }
+    
     if (compressedFile.size > 6 * 1024 * 1024) {
       setError('Compressed photo is still larger than 6mb. Please choose a smaller image.');
       setPreview(null);
       setFile(null);
+      setValidating(false);
       return;
     }
     setError(null);
@@ -513,8 +526,10 @@ async function processImageFile({
       setValidating(false);
     };
     reader.readAsDataURL(compressedFile);
-  } catch {
-    setError('Error compressing the image');
+  } catch (err) {
+    console.error('Image compression error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    setError(`Error compressing the image: ${errorMessage}. Please try a different image or refresh the page.`);
     setPreview(null);
     setFile(null);
     setValidating(false);
