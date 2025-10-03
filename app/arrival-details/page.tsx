@@ -768,7 +768,7 @@ export default function ArrivalDetailsPage() {
             <Card className="shadow-xl">
               <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
                 <CardTitle className="text-2xl text-center">
-                  आगमन विवरण प्रस्तुत करें / Submit Arrvial Details
+                  आगमन विवरण प्रस्तुत करें / Submit Arrival Details
                 </CardTitle>
                 <CardDescription className="text-center text-base mt-2">
                   केवल स्वीकृत आवेदकों के लिए / For Approved Applicants Only
