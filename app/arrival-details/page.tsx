@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Upload, X, CheckCircle2, Calendar, MapPin, AlertCircle, CheckCircle, Download, Share2 } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Calendar, MapPin, AlertCircle, CheckCircle, Download, Share2, Hash, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -314,7 +314,11 @@ function checkImageSharpness(ctx: CanvasRenderingContext2D, width: number, heigh
 }
 
 // Create social media share image by merging user photo with template
-async function createSocialShareImage(userPhotoUrl: string): Promise<string> {
+async function createSocialShareImage(
+  userPhotoUrl: string, 
+  name?: string, 
+  registrationId?: string
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -345,11 +349,11 @@ async function createSocialShareImage(userPhotoUrl: string): Promise<string> {
         
         // Define circular mask position and size (adjust these coordinates based on your template)
         const centerX = canvas.width / 2;
-        const centerY = 480; // Adjust based on where the circle is in your template
-        const radius = 200; // Adjust based on circle size
+        const centerY = 920; // Adjust based on where the circle is in your template
+        const radius = 320; // Adjust based on circle size
         
         // Create circular clipping path
-        ctx.beginPath();
+        ctx.beginPath()
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
@@ -371,6 +375,33 @@ async function createSocialShareImage(userPhotoUrl: string): Promise<string> {
         // Restore context
         ctx.restore();
         
+        // Add text fields (Name and Registration ID)
+        if (name || registrationId) {
+          ctx.save();
+          
+          // Set text properties
+          ctx.fillStyle = '#FFFFFF'; // Black color - adjust as needed
+          ctx.textAlign = 'left';
+          
+          // Draw Name (adjust Y position based on your template)
+          if (name) {
+            ctx.font = 'bold 55px Arial, sans-serif'; // Adjust font size and family
+            const nameY = 1310; // Adjust Y coordinate based on Name field position in template
+            const nameX = 570; // Adjust X coordinate based on Name field position in template
+            ctx.fillText(name.toUpperCase(), nameX, nameY);
+          }
+          
+          // Draw Registration ID (adjust Y position based on your template)
+          if (registrationId) {
+            ctx.font = 'bold 55px Arial, sans-serif'; // Adjust font size and family
+            const regY = 1410; // Adjust Y coordinate based on REG No. field position in template
+            const regX = 630; // Adjust X coordinate based on REG No. field position in template
+            ctx.fillText(registrationId, regX, regY);
+          }
+          
+          ctx.restore();
+        }
+        
         // Convert canvas to data URL
         resolve(canvas.toDataURL('image/jpeg', 0.95));
       };
@@ -380,7 +411,7 @@ async function createSocialShareImage(userPhotoUrl: string): Promise<string> {
     };
     
     templateImg.onerror = () => reject(new Error('Failed to load template image'));
-    templateImg.src = '/share-template.jpg';
+    templateImg.src = '/share-template.jpeg';
   });
 }
 
@@ -392,6 +423,9 @@ async function processImageFile({
   setError,
   setValidating,
   setQualityResult,
+  setSharePreview,
+  name,
+  registrationId,
 }: {
   file: File | null,
   setPreview: (url: string | null) => void,
@@ -399,12 +433,16 @@ async function processImageFile({
   setError: (msg: string | null) => void,
   setValidating: (val: boolean) => void,
   setQualityResult: (result: ImageQuality | null) => void,
+  setSharePreview: (url: string | null) => void,
+  name?: string,
+  registrationId?: string,
 }) {
   if (!file) {
     setPreview(null);
     setFile(null);
     setError(null);
     setQualityResult(null);
+    setSharePreview(null);
     return;
   }
   
@@ -451,6 +489,7 @@ async function processImageFile({
     setError('File size should be less than 10mb before compression');
     setPreview(null);
     setFile(null);
+    setSharePreview(null);
     return;
   }
 
@@ -482,6 +521,7 @@ async function processImageFile({
       setError('Compressed photo is still larger than 6mb. Please choose a smaller image.');
       setPreview(null);
       setFile(null);
+      setSharePreview(null);
       setValidating(false);
       return;
     }
@@ -511,6 +551,19 @@ async function processImageFile({
             
             setError(`⚠️ Image quality issues detected: ${issues.join(', ')}. Please upload a clearer photo for better ID card quality.`);
           }
+          
+          // Generate share preview if image quality is good
+          if (quality.score >= 96 && !quality.hasMultipleFaces && reader.result) {
+            try {
+              const shareUrl = await createSocialShareImage(reader.result as string, name, registrationId);
+              setSharePreview(shareUrl);
+            } catch (err) {
+              console.error('Failed to generate share preview:', err);
+              setSharePreview(null);
+            }
+          } else {
+            setSharePreview(null);
+          }
         } catch (err) {
           console.error('Quality check error:', err);
           // Don't block upload if quality check fails
@@ -523,6 +576,7 @@ async function processImageFile({
       setError('Error reading the file');
       setPreview(null);
       setFile(null);
+      setSharePreview(null);
       setValidating(false);
     };
     reader.readAsDataURL(compressedFile);
@@ -532,6 +586,7 @@ async function processImageFile({
     setError(`Error compressing the image: ${errorMessage}. Please try a different image or refresh the page.`);
     setPreview(null);
     setFile(null);
+    setSharePreview(null);
     setValidating(false);
   }
 }
@@ -560,6 +615,8 @@ export default function ArrivalDetailsPage() {
   // Social share image state
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [generatingShareImage, setGeneratingShareImage] = useState(false);
+  const [sharePreviewUrl, setSharePreviewUrl] = useState<string | null>(null);
+  const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
 
   // Preload face detection models when form step is reached
   useEffect(() => {
@@ -570,6 +627,18 @@ export default function ArrivalDetailsPage() {
       });
     }
   }, [step]);
+
+  // Handle ESC key to close fullscreen preview
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showFullscreenPreview) {
+        setShowFullscreenPreview(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showFullscreenPreview]);
 
   // Handler for registration ID lookup
   const handleLookup = async (e: React.FormEvent) => {
@@ -620,6 +689,9 @@ export default function ArrivalDetailsPage() {
       setError: setPhotoError,
       setValidating: setValidatingImage,
       setQualityResult: setImageQuality,
+      setSharePreview: setSharePreviewUrl,
+      name: registration?.fullName,
+      registrationId: registration?.id,
     });
   };
 
@@ -726,7 +798,11 @@ export default function ArrivalDetailsPage() {
       if (photoPreview) {
         setGeneratingShareImage(true);
         try {
-          const shareUrl = await createSocialShareImage(photoPreview);
+          const shareUrl = await createSocialShareImage(
+            photoPreview, 
+            registration?.fullName, 
+            registration?.id
+          );
           setShareImageUrl(shareUrl);
           
           // Auto-download the image
@@ -761,6 +837,7 @@ export default function ArrivalDetailsPage() {
     setImageQuality(null);
     setValidatingImage(false);
     setShareImageUrl(null);
+    setSharePreviewUrl(null);
     setGeneratingShareImage(false);
     setFormErrors({});
     setError(null);
@@ -771,6 +848,69 @@ export default function ArrivalDetailsPage() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-primary/5 to-secondary/5">
       {loading && <FullScreenLoader />}
       <RegistrationNavigation />
+
+      {/* Fullscreen Preview Overlay */}
+      {showFullscreenPreview && sharePreviewUrl && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowFullscreenPreview(false)}
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setShowFullscreenPreview(false)}
+            className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors duration-200 group"
+            aria-label="Close preview"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          {/* Download Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const link = document.createElement('a');
+              link.href = sharePreviewUrl;
+              link.download = `yatra-preview-${registration?.id}.jpg`;
+              link.click();
+            }}
+            className="absolute top-4 left-4 z-10 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors duration-200 flex items-center gap-2 text-white text-sm font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Download Preview
+          </button>
+
+          {/* Image Container */}
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="relative max-w-2xl max-h-[90vh] w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative rounded-lg overflow-hidden shadow-2xl">
+              <Image
+                src={sharePreviewUrl}
+                alt="Full Screen Preview"
+                width={600}
+                height={1024}
+                className="w-full h-auto"
+                priority
+              />
+            </div>
+            
+            {/* Image Info */}
+            <div className="mt-4 text-center">
+              <p className="text-white/80 text-sm">
+                Click outside or press ESC to close
+              </p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
       
       <main className="flex-1 container mx-auto px-4 pt-24 pb-12 max-w-4xl">
         {/* Lookup Step */}
@@ -780,48 +920,77 @@ export default function ArrivalDetailsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Card className="shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
-                <CardTitle className="text-2xl text-center">
-                  आगमन विवरण प्रस्तुत करें / Submit Arrival Details
-                </CardTitle>
-                <CardDescription className="text-center text-base mt-2">
-                  केवल स्वीकृत आवेदकों के लिए / For Approved Applicants Only
-                </CardDescription>
+            <Card className="shadow-2xl border-0">
+              <CardHeader className="bg-gradient-to-br from-orange-50 via-white to-green-50 border-b pb-8">
+                <div className="text-center space-y-3">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary mb-2">
+                    <Calendar className="w-8 h-8 text-white" />
+                  </div>
+                  <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    आगमन विवरण प्रस्तुत करें
+                  </CardTitle>
+                  <CardTitle className="text-2xl font-semibold text-gray-700">
+                    Submit Arrival Details
+                  </CardTitle>
+                  <CardDescription className="text-base mt-3 flex items-center justify-center gap-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                      <CheckCircle className="w-4 h-4" />
+                      केवल स्वीकृत आवेदकों के लिए
+                    </div>
+                  </CardDescription>
+                  <CardDescription className="text-sm text-gray-600">
+                    For Approved Applicants Only
+                  </CardDescription>
+                </div>
               </CardHeader>
-              <CardContent className="p-8">
+              <CardContent className="p-8 md:p-10">
                 {error && (
                   <Alert variant="destructive" className="mb-6">
+                    <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
                 
                 <form onSubmit={handleLookup} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="regId" className="text-lg">
+                  <div className="space-y-3">
+                    <Label htmlFor="regId" className="text-lg font-semibold flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Hash className="w-4 h-4 text-primary" />
+                      </div>
                       पंजीकरण आईडी / Registration ID
                     </Label>
-                    <Input
-                      id="regId"
-                      value={registrationId}
-                      onChange={(e) => setRegistrationId(e.target.value.toUpperCase())}
-                      placeholder="e.g., SAN1501, CHA1601, NAV1301"
-                      className="text-lg"
-                      required
-                    />
-                    <p className="text-sm text-gray-500">
-                      कृपया अपना पंजीकरण आईडी दर्ज करें जो आपको स्वीकृति के समय प्राप्त हुआ था
-                    </p>
+                    <div className="relative">
+                      <Input
+                        id="regId"
+                        value={registrationId}
+                        onChange={(e) => setRegistrationId(e.target.value.toUpperCase())}
+                        placeholder="e.g., SAN1501, CHA1601, NAV1301"
+                        className="text-lg h-14 pl-12 pr-4 border-2 focus:border-primary transition-colors"
+                        required
+                      />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        <Hash className="w-5 h-5" />
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-blue-800 leading-relaxed">
+                        कृपया अपना पंजीकरण आईडी दर्ज करें जो आपको स्वीकृति के समय प्राप्त हुआ था
+                      </p>
+                    </div>
                   </div>
                   
-                  <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                  <Button type="submit" className="w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all" size="lg" disabled={loading}>
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         खोज रहे हैं / Searching...
                       </>
                     ) : (
-                      <>आगे बढ़ें / Proceed</>
+                      <>
+                        आगे बढ़ें / Proceed
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </>
                     )}
                   </Button>
                 </form>
@@ -837,24 +1006,47 @@ export default function ArrivalDetailsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Card className="shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <CardTitle className="text-2xl">
-                      आगमन विवरण / Arrival Details
+            <Card className="shadow-2xl border-0">
+              <CardHeader className="bg-gradient-to-br from-orange-50 via-white to-green-50 border-b pb-6">
+                <div className="space-y-4">
+                  {/* Title */}
+                  <div className="text-center">
+                    <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+                      आगमन विवरण
                     </CardTitle>
-                    <CardDescription className="text-base mt-1">
-                      Registration ID: <span className="font-bold text-primary">{registration.id}</span>
-                    </CardDescription>
+                    <CardTitle className="text-2xl font-semibold text-gray-700">
+                      Arrival Details
+                    </CardTitle>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-600">Applicant Name</p>
-                    <p className="text-lg font-bold text-primary">{registration.fullName}</p>
+                  
+                  {/* Registration Info Cards */}
+                  <div className="grid md:grid-cols-2 gap-4 mt-4">
+                    <div className="bg-white border-2 border-primary/20 rounded-xl p-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Hash className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 font-medium">Registration ID</p>
+                          <p className="text-lg font-bold text-primary">{registration.id}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white border-2 border-secondary/20 rounded-xl p-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center">
+                          <CheckCircle className="w-5 h-5 text-secondary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 font-medium">Applicant Name</p>
+                          <p className="text-lg font-bold text-secondary">{registration.fullName}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-8">
+              <CardContent className="p-8 md:p-10">
                 {error && (
                   <Alert variant="destructive" className="mb-6">
                     <AlertDescription>{error}</AlertDescription>
@@ -863,9 +1055,11 @@ export default function ArrivalDetailsPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-8">
                   {/* Arrival Date */}
-                  <div className="space-y-2">
-                    <Label htmlFor="arrivalDate" className="text-lg flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-primary" />
+                  <div className="space-y-3">
+                    <Label htmlFor="arrivalDate" className="text-lg font-semibold flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Calendar className="w-4 h-4 text-primary" />
+                      </div>
                       आगमन तिथि / Arrival Date <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -878,28 +1072,33 @@ export default function ArrivalDetailsPage() {
                       }}
                       min={DATE_CONFIGS[registration.formType].minDate}
                       max={DATE_CONFIGS[registration.formType].maxDate}
-                      className="text-lg"
+                      className="text-lg h-12 border-2 focus:border-primary transition-colors"
                       required
                     />
-                    <p className="text-sm text-gray-500">
-                      कृपया {new Date(DATE_CONFIGS[registration.formType].minDate).toLocaleDateString('en-GB')} और {new Date(DATE_CONFIGS[registration.formType].maxDate).toLocaleDateString('en-GB')} के बीच तिथि चुनें
-                    </p>
+                    <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-blue-800 leading-relaxed">
+                        कृपया {new Date(DATE_CONFIGS[registration.formType].minDate).toLocaleDateString('en-GB')} और {new Date(DATE_CONFIGS[registration.formType].maxDate).toLocaleDateString('en-GB')} के बीच तिथि चुनें
+                      </p>
+                    </div>
                     {formErrors.arrivalDate && (
                       <p className="text-sm text-red-500">{formErrors.arrivalDate}</p>
                     )}
                   </div>
 
                   {/* Arrival Place */}
-                  <div className="space-y-2">
-                    <Label htmlFor="arrivalPlace" className="text-lg flex items-center gap-2">
-                      <MapPin className="w-5 h-5 text-primary" />
+                  <div className="space-y-3">
+                    <Label htmlFor="arrivalPlace" className="text-lg font-semibold flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <MapPin className="w-4 h-4 text-primary" />
+                      </div>
                       आगमन स्थान / Arrival Place <span className="text-red-500">*</span>
                     </Label>
                     <Select value={arrivalPlace} onValueChange={(value) => {
                       setArrivalPlace(value);
                       setFormErrors({ ...formErrors, arrivalPlace: undefined });
                     }}>
-                      <SelectTrigger className="text-lg">
+                      <SelectTrigger className="text-lg h-12 border-2 focus:border-primary transition-colors">
                         <SelectValue placeholder="स्थान चुनें / Select Place" />
                       </SelectTrigger>
                       <SelectContent>
@@ -917,7 +1116,10 @@ export default function ArrivalDetailsPage() {
 
                   {/* ID Photo Upload */}
                   <div className="space-y-3">
-                    <Label htmlFor="passportPhoto" className="text-lg">
+                    <Label htmlFor="passportPhoto" className="text-lg font-semibold flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Upload className="w-4 h-4 text-primary" />
+                      </div>
                       ID Card Photo <span className="text-red-500">*</span>
                     </Label>
                     
@@ -1054,11 +1256,106 @@ export default function ArrivalDetailsPage() {
                             setPhotoPreview(null);
                             setPhotoError(null);
                             setImageQuality(null);
+                            setSharePreviewUrl(null);
                           }}
                         >
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
+                    )}
+                    
+                    {/* Share Preview - Only shown when image quality is good */}
+                    {sharePreviewUrl && photoFile && imageQuality && imageQuality.score >= 96 && !imageQuality.hasMultipleFaces && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className="mt-6"
+                      >
+                        {/* Success Badge */}
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                          <div className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full shadow-md">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="text-sm font-semibold">Share Preview Ready</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                          {/* Preview Image */}
+                          <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+                            <div className="relative mx-auto max-w-sm">
+                              {/* Decorative corner accents */}
+                              <div className="absolute -top-2 -left-2 w-20 h-20 border-t-4 border-l-4 border-green-500 rounded-tl-xl opacity-50"></div>
+                              <div className="absolute -bottom-2 -right-2 w-20 h-20 border-b-4 border-r-4 border-green-500 rounded-br-xl opacity-50"></div>
+                              
+                              <div 
+                                className="relative rounded-xl overflow-hidden shadow-2xl ring-1 ring-gray-200 cursor-pointer group"
+                                onClick={() => setShowFullscreenPreview(true)}
+                              >
+                                <Image
+                                  src={sharePreviewUrl}
+                                  alt="Social Media Share Preview"
+                                  width={400}
+                                  height={683}
+                                  className="w-full h-auto transition-transform duration-300 group-hover:scale-105"
+                                />
+                                {/* Click to expand hint */}
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center">
+                                  <div className="bg-white/90 px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                                    <span className="text-xs font-medium text-gray-900 flex items-center gap-1.5">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                      </svg>
+                                      Click to expand
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Info Section */}
+                          <div className="p-6 space-y-4 bg-white">
+                            {/* Title */}
+                            <div className="text-center">
+                              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                                Your Shareable Image
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                This is how it will appear when shared
+                              </p>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="border-t border-gray-200"></div>
+
+                            {/* Quick Info Points */}
+                            <div className="space-y-3">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 mt-0.5">
+                                  <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                                    <Share2 className="w-3.5 h-3.5 text-green-600" />
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                  Download & share after submission on WhatsApp, Facebook, or Instagram
+                                </p>
+                              </div>
+                              
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 mt-0.5">
+                                  <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                  Want to change? Upload a different photo before submitting
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
                     )}
                     
                     {(photoError || (photoFile && imageQuality && imageQuality.score < 96)) && (
@@ -1077,19 +1374,19 @@ export default function ArrivalDetailsPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <div className="flex flex-col sm:flex-row gap-4 pt-6">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={handleReset}
-                      className="flex-1 w-full"
+                      className="flex-1 w-full h-14 text-lg font-semibold border-2 hover:bg-gray-50"
                       disabled={loading}
                     >
                       रद्द करें / Cancel
                     </Button>
                     <Button
                       type="submit"
-                      className="flex-1 w-full"
+                      className="flex-1 w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
                       disabled={loading || !photoFile || (photoFile !== null && imageQuality !== null && (imageQuality.score < 96 || imageQuality.hasMultipleFaces))}
                     >
                       {loading ? (
@@ -1098,7 +1395,10 @@ export default function ArrivalDetailsPage() {
                           जमा हो रहा है / Submitting...
                         </>
                       ) : (
-                        <>प्रस्तुत करें / Submit</>
+                        <>
+                          प्रस्तुत करें / Submit
+                          <CheckCircle className="ml-2 h-5 w-5" />
+                        </>
                       )}
                     </Button>
                   </div>
@@ -1115,20 +1415,28 @@ export default function ArrivalDetailsPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <Card className="shadow-xl">
-              <CardContent className="p-6 md:p-10">
-                {/* Success Message */}
-                <div className="text-center mb-8">
-                  <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-6" />
-                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                    सफलतापूर्वक प्रस्तुत किया गया!
-                  </h2>
-                  {/* <p className="text-xl text-gray-600 mb-2">
-                    Arrival Details Submitted Successfully!
-                  </p>
-                  <p className="text-lg text-gray-500">
-                    आपके आगमन विवरण सफलतापूर्वक प्राप्त हो गए हैं।
-                  </p> */}
+            <Card className="shadow-xl border-0">
+              <CardContent className="p-8 md:p-10">
+                {/* Simple Success Message */}
+                <div className="flex items-center justify-center gap-3 mb-8 pb-6 border-b">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.1, type: "spring", stiffness: 250 }}
+                    className="flex-shrink-0"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
+                      <CheckCircle2 className="w-7 h-7 text-white" />
+                    </div>
+                  </motion.div>
+                  <div>
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                      सफलतापूर्वक प्रस्तुत किया गया!
+                    </h2>
+                    <p className="text-sm text-gray-700 mt-0.5">
+                      Successfully Submitted
+                    </p>
+                  </div>
                 </div>
 
                 {/* Social Share Section */}
@@ -1136,17 +1444,22 @@ export default function ArrivalDetailsPage() {
                   {generatingShareImage ? (
                     <div className="flex flex-col items-center justify-center py-8">
                       <Loader2 className="w-10 h-10 animate-spin text-primary mb-3" />
-                      <p className="text-gray-600">Generating your share image...</p>
+                      <p className="text-gray-700">Generating your share image...</p>
                     </div>
                   ) : shareImageUrl ? (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {/* Share Message */}
-                      <p className="text-sm text-gray-600 text-center px-4">
-                        💡 Share this on WhatsApp, Facebook, or Instagram to spread the word!
-                      </p>
+                      <div className="text-center space-y-2">
+                        <h3 className="text-xl font-bold text-gray-900">
+                          Share Your Registration
+                        </h3>
+                        <p className="text-sm text-gray-700 px-4">
+                          💡 Share this on WhatsApp, Facebook, or Instagram to spread the word!
+                        </p>
+                      </div>
 
                       {/* Share Image with Icon Overlay */}
-                      <div className="relative mx-auto max-w-sm rounded-lg overflow-hidden shadow-lg">
+                      <div className="relative mx-auto max-w-sm rounded-xl overflow-hidden shadow-2xl ring-2 ring-gray-200">
                         <Image
                           src={shareImageUrl}
                           alt="Social Media Share Image"
@@ -1209,7 +1522,7 @@ export default function ArrivalDetailsPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-6 text-gray-500">
+                    <div className="text-center py-6 text-gray-700">
                       <p className="text-sm">Share image could not be generated.</p>
                     </div>
                   )}
@@ -1232,9 +1545,15 @@ export default function ArrivalDetailsPage() {
                 </div> */}
 
                 {/* Submit Another Button */}
-                <div className="text-center">
-                  <Button onClick={handleReset} size="lg" variant="outline" className="w-full sm:w-auto">
-                    Submit Another Registration
+                <div className="text-center pt-6 border-t">
+                  <Button 
+                    onClick={handleReset} 
+                    size="lg" 
+                    variant="outline" 
+                    className="w-full sm:w-auto h-14 text-lg font-semibold border-2 hover:bg-gray-50 px-8"
+                  >
+                    <ArrowRight className="mr-2 h-5 w-5 rotate-180" />
+                    Submit Another
                   </Button>
                 </div>
               </CardContent>
