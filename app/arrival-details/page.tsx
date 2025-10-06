@@ -392,7 +392,7 @@ async function createSocialShareImage(
           const centerX = canvas.width / 2; // Center of canvas
           const maxWidth = canvas.width - 600; // Max width with padding
           const lineHeight = 60; // Line height for wrapped text
-          const nameY = 1330; // Starting Y coordinate
+          const nameY = 1315; // Starting Y coordinate
 
           // Split text into lines if it's too long
           const words = nameText.split(' ');
@@ -422,7 +422,7 @@ async function createSocialShareImage(
 
           // Draw Registration ID (centered)
           ctx.font = 'bold 55px Arial, sans-serif';
-          const regY = nameY + totalNameHeight + 20; // Position below name with spacing
+          const regY = nameY + totalNameHeight + 15; // Position below name with spacing
           ctx.fillText(registrationId, centerX, regY);
 
           ctx.restore();
