@@ -316,14 +316,14 @@ function checkImageSharpness(ctx: CanvasRenderingContext2D, width: number, heigh
 
 // Create social media share image by merging user photo with template
 async function createSocialShareImage(
-  userPhotoUrl: string, 
-  name?: string, 
-  registrationId?: string
+  userPhotoUrl: string,
+  name: string,
+  registrationId: string
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     if (!ctx) {
       reject(new Error('Canvas context not available'));
       return;
@@ -331,7 +331,7 @@ async function createSocialShareImage(
 
     const templateImg = new window.Image();
     const userImg = new window.Image();
-    
+
     templateImg.crossOrigin = 'anonymous';
     userImg.crossOrigin = 'anonymous';
 
@@ -339,78 +339,103 @@ async function createSocialShareImage(
     templateImg.onload = () => {
       canvas.width = templateImg.width;
       canvas.height = templateImg.height;
-      
+
       // Draw template background
       ctx.drawImage(templateImg, 0, 0);
-      
+
       // Load user photo
       userImg.onload = () => {
         // Save context state
         ctx.save();
-        
+
         // Define circular mask position and size (adjust these coordinates based on your template)
         const centerX = canvas.width / 2;
         const centerY = 920; // Adjust based on where the circle is in your template
         const radius = 320; // Adjust based on circle size
-        
+
         // Create circular clipping path
         ctx.beginPath()
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        
+
         // Calculate dimensions to fill the circle while maintaining aspect ratio
         const scale = Math.max(
           (radius * 2) / userImg.width,
           (radius * 2) / userImg.height
         );
-        
+
         const scaledWidth = userImg.width * scale;
         const scaledHeight = userImg.height * scale;
         const offsetX = centerX - scaledWidth / 2;
         const offsetY = centerY - scaledHeight / 2;
-        
+
         // Draw user image in circular area
         ctx.drawImage(userImg, offsetX, offsetY, scaledWidth, scaledHeight);
-        
+
         // Restore context
         ctx.restore();
-        
+
         // Add text fields (Name and Registration ID)
-        if (name || registrationId) {
+        if (name && registrationId) {
           ctx.save();
-          
+
           // Set text properties
-          ctx.fillStyle = '#FFFFFF'; // Black color - adjust as needed
-          ctx.textAlign = 'left';
-          
-          // Draw Name (adjust Y position based on your template)
-          if (name) {
-            ctx.font = 'bold 55px Arial, sans-serif'; // Adjust font size and family
-            const nameY = 1340; // Adjust Y coordinate based on Name field position in template
-            const nameX = 450; // Adjust X coordinate based on Name field position in template
-            ctx.fillText(`Name: ${name.toUpperCase()}`, nameX, nameY);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.textAlign = 'center'; // Center align text
+
+          // Draw Name with text wrapping (adjust Y position based on your template)
+
+          const nameText = name.toUpperCase();
+          // const nameText = "MANOJ KUMAR JAYANTILAL JAIN";
+          ctx.font = 'bold 65px Arial, sans-serif';
+          const centerX = canvas.width / 2; // Center of canvas
+          const maxWidth = canvas.width - 600; // Max width with padding
+          const lineHeight = 60; // Line height for wrapped text
+          const nameY = 1330; // Starting Y coordinate
+
+          // Split text into lines if it's too long
+          const words = nameText.split(' ');
+          let line = '';
+          const lines: string[] = [];
+
+          for (let i = 0; i < words.length; i++) {
+            const testLine = line + words[i] + ' ';
+            const metrics = ctx.measureText(testLine);
+
+            if (metrics.width > maxWidth && i > 0) {
+              lines.push(line.trim());
+              line = words[i] + ' ';
+            } else {
+              line = testLine;
+            }
           }
-          
-          // Draw Registration ID (adjust Y position based on your template)
-          if (registrationId) {
-            ctx.font = 'bold 55px Arial, sans-serif'; // Adjust font size and family
-            const regY = 1410; // Adjust Y coordinate based on REG No. field position in template
-            const regX = 450; // Adjust X coordinate based on REG No. field position in template
-            ctx.fillText(`Reg No.: ${registrationId}`, regX, regY);
-          }
-          
+          lines.push(line.trim());
+
+          // Draw each line centered
+          lines.forEach((textLine, index) => {
+            ctx.fillText(textLine, centerX, nameY + (index * lineHeight));
+          });
+
+          // Adjust registration ID position based on number of name lines
+          const totalNameHeight = lines.length * lineHeight;
+
+          // Draw Registration ID (centered)
+          ctx.font = 'bold 55px Arial, sans-serif';
+          const regY = nameY + totalNameHeight + 20; // Position below name with spacing
+          ctx.fillText(registrationId, centerX, regY);
+
           ctx.restore();
         }
-        
+
         // Convert canvas to data URL
         resolve(canvas.toDataURL('image/jpeg', 0.95));
       };
-      
+
       userImg.onerror = () => reject(new Error('Failed to load user image'));
       userImg.src = userPhotoUrl;
     };
-    
+
     templateImg.onerror = () => reject(new Error('Failed to load template image'));
     templateImg.src = '/share-template.jpeg';
   });
@@ -435,8 +460,8 @@ async function processImageFile({
   setValidating: (val: boolean) => void,
   setQualityResult: (result: ImageQuality | null) => void,
   setSharePreview: (url: string | null) => void,
-  name?: string,
-  registrationId?: string,
+  name: string,
+  registrationId: string,
 }) {
   if (!file) {
     setPreview(null);
@@ -694,8 +719,8 @@ export default function ArrivalDetailsPage() {
       setValidating: setValidatingImage,
       setQualityResult: setImageQuality,
       setSharePreview: setSharePreviewUrl,
-      name: registration?.fullName,
-      registrationId: registration?.id,
+      name: registration!.fullName,
+      registrationId: registration!.id,
     });
   };
 
@@ -788,7 +813,7 @@ export default function ArrivalDetailsPage() {
           formType: registration.formType,
           aadharNumber: registration.aadharNumber,
           arrivalDate,
-          arrivalTime: arrivalTime || undefined,
+          arrivalTime,
           arrivalPlace,
           additionalNotes: additionalNotes || undefined,
           idPhotoKey: photoUpload.key,
@@ -1143,9 +1168,12 @@ export default function ArrivalDetailsPage() {
                     <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                       <p className="text-sm text-blue-800 leading-relaxed">
-                        कृपया अनुमानित आगमन समय चुनें (वैकल्पिक)
+                        कृपया अनुमानित आगमन समय चुनें
                       </p>
                     </div>
+                    {formErrors.arrivalTime && (
+                      <p className="text-sm text-red-500">{formErrors.arrivalTime}</p>
+                    )}
                   </div>
 
                   {/* Arrival Place */}

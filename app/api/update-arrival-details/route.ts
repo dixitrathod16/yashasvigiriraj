@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!arrivalDate || !arrivalPlace || !idPhotoKey) {
+    if (!arrivalDate || !arrivalTime || !arrivalPlace || !idPhotoKey) {
       return NextResponse.json(
         { error: 'All required travel details must be provided' },
         { status: 400 }
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     // Build update expression dynamically to handle optional fields
     const updateExpressions = [
       'arrivalDate = :arrivalDate',
+      'arrivalTime = :arrivalTime',
       'arrivalPlace = :arrivalPlace',
       'idPhotoKey = :idPhotoKey',
       'travelDetailsSubmittedAt = :submittedAt'
@@ -32,17 +33,13 @@ export async function POST(request: Request) {
     
     const expressionAttributeValues: Record<string, string> = {
       ':arrivalDate': arrivalDate,
+      ':arrivalTime': arrivalTime,
       ':arrivalPlace': arrivalPlace,
       ':idPhotoKey': idPhotoKey,
       ':submittedAt': new Date().toISOString(),
     };
 
     // Add optional fields if provided
-    if (arrivalTime) {
-      updateExpressions.push('arrivalTime = :arrivalTime');
-      expressionAttributeValues[':arrivalTime'] = arrivalTime;
-    }
-
     if (additionalNotes) {
       updateExpressions.push('additionalNotes = :additionalNotes');
       expressionAttributeValues[':additionalNotes'] = additionalNotes;
