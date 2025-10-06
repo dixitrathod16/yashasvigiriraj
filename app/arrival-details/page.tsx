@@ -7,9 +7,10 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Upload, X, CheckCircle2, Calendar, MapPin, AlertCircle, CheckCircle, Download, Share2, Hash, ArrowRight } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Calendar, MapPin, AlertCircle, CheckCircle, Download, Share2, Hash, ArrowRight, Clock, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -386,17 +387,17 @@ async function createSocialShareImage(
           // Draw Name (adjust Y position based on your template)
           if (name) {
             ctx.font = 'bold 55px Arial, sans-serif'; // Adjust font size and family
-            const nameY = 1310; // Adjust Y coordinate based on Name field position in template
-            const nameX = 570; // Adjust X coordinate based on Name field position in template
-            ctx.fillText(name.toUpperCase(), nameX, nameY);
+            const nameY = 1340; // Adjust Y coordinate based on Name field position in template
+            const nameX = 450; // Adjust X coordinate based on Name field position in template
+            ctx.fillText(`Name: ${name.toUpperCase()}`, nameX, nameY);
           }
           
           // Draw Registration ID (adjust Y position based on your template)
           if (registrationId) {
             ctx.font = 'bold 55px Arial, sans-serif'; // Adjust font size and family
             const regY = 1410; // Adjust Y coordinate based on REG No. field position in template
-            const regX = 630; // Adjust X coordinate based on REG No. field position in template
-            ctx.fillText(registrationId, regX, regY);
+            const regX = 450; // Adjust X coordinate based on REG No. field position in template
+            ctx.fillText(`Reg No.: ${registrationId}`, regX, regY);
           }
           
           ctx.restore();
@@ -600,7 +601,9 @@ export default function ArrivalDetailsPage() {
   
   // Form fields
   const [arrivalDate, setArrivalDate] = useState('');
+  const [arrivalTime, setArrivalTime] = useState('');
   const [arrivalPlace, setArrivalPlace] = useState('');
+  const [additionalNotes, setAdditionalNotes] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -608,6 +611,7 @@ export default function ArrivalDetailsPage() {
   const [imageQuality, setImageQuality] = useState<ImageQuality | null>(null);
   const [formErrors, setFormErrors] = useState<{
     arrivalDate?: string;
+    arrivalTime?: string;
     arrivalPlace?: string;
     photo?: string;
   }>({});
@@ -697,10 +701,14 @@ export default function ArrivalDetailsPage() {
 
   // Validate form
   const validateForm = (): boolean => {
-    const errors: { arrivalDate?: string; arrivalPlace?: string; photo?: string } = {};
+    const errors: { arrivalDate?: string; arrivalTime?: string; arrivalPlace?: string; photo?: string } = {};
 
     if (!arrivalDate) {
       errors.arrivalDate = 'Arrival date is required';
+    }
+
+    if (!arrivalTime) {
+      errors.arrivalTime = 'Arrival time is required';
     }
 
     if (!arrivalPlace) {
@@ -780,7 +788,9 @@ export default function ArrivalDetailsPage() {
           formType: registration.formType,
           aadharNumber: registration.aadharNumber,
           arrivalDate,
+          arrivalTime: arrivalTime || undefined,
           arrivalPlace,
+          additionalNotes: additionalNotes || undefined,
           idPhotoKey: photoUpload.key,
         }),
       });
@@ -830,7 +840,9 @@ export default function ArrivalDetailsPage() {
     setRegistrationId('');
     setRegistration(null);
     setArrivalDate('');
+    setArrivalTime('');
     setArrivalPlace('');
+    setAdditionalNotes('');
     setPhotoFile(null);
     setPhotoPreview(null);
     setPhotoError(null);
@@ -1086,6 +1098,56 @@ export default function ArrivalDetailsPage() {
                     )}
                   </div>
 
+                  {/* Arrival Time */}
+                  <div className="space-y-3">
+                    <Label htmlFor="arrivalTime" className="text-lg font-semibold flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Clock className="w-4 h-4 text-primary" />
+                      </div>
+                      आगमन समय / Arrival Time <span className="text-red-500">*</span>
+                    </Label>
+                    <Select value={arrivalTime} onValueChange={(value) => {
+                      setArrivalTime(value);
+                      setFormErrors({ ...formErrors, arrivalTime: undefined });
+                    }}>
+                      <SelectTrigger className="text-lg h-12 border-2 focus:border-primary transition-colors">
+                        <SelectValue placeholder="समय चुनें / Select Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="00:00" className="text-lg">12:00 AM (Midnight)</SelectItem>
+                        <SelectItem value="01:00" className="text-lg">01:00 AM</SelectItem>
+                        <SelectItem value="02:00" className="text-lg">02:00 AM</SelectItem>
+                        <SelectItem value="03:00" className="text-lg">03:00 AM</SelectItem>
+                        <SelectItem value="04:00" className="text-lg">04:00 AM</SelectItem>
+                        <SelectItem value="05:00" className="text-lg">05:00 AM</SelectItem>
+                        <SelectItem value="06:00" className="text-lg">06:00 AM</SelectItem>
+                        <SelectItem value="07:00" className="text-lg">07:00 AM</SelectItem>
+                        <SelectItem value="08:00" className="text-lg">08:00 AM</SelectItem>
+                        <SelectItem value="09:00" className="text-lg">09:00 AM</SelectItem>
+                        <SelectItem value="10:00" className="text-lg">10:00 AM</SelectItem>
+                        <SelectItem value="11:00" className="text-lg">11:00 AM</SelectItem>
+                        <SelectItem value="12:00" className="text-lg">12:00 PM (Noon)</SelectItem>
+                        <SelectItem value="13:00" className="text-lg">01:00 PM</SelectItem>
+                        <SelectItem value="14:00" className="text-lg">02:00 PM</SelectItem>
+                        <SelectItem value="15:00" className="text-lg">03:00 PM</SelectItem>
+                        <SelectItem value="16:00" className="text-lg">04:00 PM</SelectItem>
+                        <SelectItem value="17:00" className="text-lg">05:00 PM</SelectItem>
+                        <SelectItem value="18:00" className="text-lg">06:00 PM</SelectItem>
+                        <SelectItem value="19:00" className="text-lg">07:00 PM</SelectItem>
+                        <SelectItem value="20:00" className="text-lg">08:00 PM</SelectItem>
+                        <SelectItem value="21:00" className="text-lg">09:00 PM</SelectItem>
+                        <SelectItem value="22:00" className="text-lg">10:00 PM</SelectItem>
+                        <SelectItem value="23:00" className="text-lg">11:00 PM</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-blue-800 leading-relaxed">
+                        कृपया अनुमानित आगमन समय चुनें (वैकल्पिक)
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Arrival Place */}
                   <div className="space-y-3">
                     <Label htmlFor="arrivalPlace" className="text-lg font-semibold flex items-center gap-2">
@@ -1112,6 +1174,33 @@ export default function ArrivalDetailsPage() {
                     {formErrors.arrivalPlace && (
                       <p className="text-sm text-red-500">{formErrors.arrivalPlace}</p>
                     )}
+                  </div>
+
+                  {/* Additional Notes */}
+                  <div className="space-y-3">
+                    <Label htmlFor="additionalNotes" className="text-lg font-semibold flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-primary" />
+                      </div>
+                      अतिरिक्त टिप्पणियाँ / Additional Notes
+                    </Label>
+                    <Textarea
+                      id="additionalNotes"
+                      value={additionalNotes}
+                      onChange={(e) => setAdditionalNotes(e.target.value)}
+                      placeholder="कोई अतिरिक्त जानकारी या विशेष आवश्यकताएं / Any additional information or special requirements"
+                      className="text-lg min-h-[100px] border-2 focus:border-primary transition-colors resize-none"
+                      maxLength={500}
+                    />
+                    <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-blue-800 leading-relaxed">
+                        यदि आपके पास कोई विशेष आवश्यकताएं या जानकारी है तो यहाँ साझा करें (वैकल्पिक, अधिकतम 500 अक्षर)
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-600 text-right">
+                      {additionalNotes.length}/500 characters
+                    </p>
                   </div>
 
                   {/* ID Photo Upload */}
@@ -1453,8 +1542,7 @@ export default function ArrivalDetailsPage() {
                         <h3 className="text-xl font-bold text-gray-900">
                           Share Your Registration
                         </h3>
-                        <p className="text-sm text-gray-700 px-4">
-                          💡 Share this on WhatsApp, Facebook, or Instagram to spread the word!
+                        <p className="text-sm text-gray-700 px-4">                         💡 Share this on WhatsApp, Facebook, or Instagram to spread the word!
                         </p>
                       </div>
 

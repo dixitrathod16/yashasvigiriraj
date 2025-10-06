@@ -6,7 +6,7 @@ const USER_TABLE = 'user_registrations';
 
 export async function POST(request: Request) {
   try {
-    const { formType, aadharNumber, arrivalDate, arrivalPlace, idPhotoKey } = await request.json();
+    const { formType, aadharNumber, arrivalDate, arrivalTime, arrivalPlace, additionalNotes, idPhotoKey } = await request.json();
 
     if (!formType || !aadharNumber) {
       return NextResponse.json(
@@ -17,9 +17,35 @@ export async function POST(request: Request) {
 
     if (!arrivalDate || !arrivalPlace || !idPhotoKey) {
       return NextResponse.json(
-        { error: 'All travel details are required' },
+        { error: 'All required travel details must be provided' },
         { status: 400 }
       );
+    }
+
+    // Build update expression dynamically to handle optional fields
+    const updateExpressions = [
+      'arrivalDate = :arrivalDate',
+      'arrivalPlace = :arrivalPlace',
+      'idPhotoKey = :idPhotoKey',
+      'travelDetailsSubmittedAt = :submittedAt'
+    ];
+    
+    const expressionAttributeValues: Record<string, string> = {
+      ':arrivalDate': arrivalDate,
+      ':arrivalPlace': arrivalPlace,
+      ':idPhotoKey': idPhotoKey,
+      ':submittedAt': new Date().toISOString(),
+    };
+
+    // Add optional fields if provided
+    if (arrivalTime) {
+      updateExpressions.push('arrivalTime = :arrivalTime');
+      expressionAttributeValues[':arrivalTime'] = arrivalTime;
+    }
+
+    if (additionalNotes) {
+      updateExpressions.push('additionalNotes = :additionalNotes');
+      expressionAttributeValues[':additionalNotes'] = additionalNotes;
     }
 
     // Update the registration with travel details
@@ -30,13 +56,8 @@ export async function POST(request: Request) {
           formType,
           aadharNumber: Number(aadharNumber),
         },
-        UpdateExpression: 'SET arrivalDate = :arrivalDate, arrivalPlace = :arrivalPlace, idPhotoKey = :idPhotoKey, travelDetailsSubmittedAt = :submittedAt',
-        ExpressionAttributeValues: {
-          ':arrivalDate': arrivalDate,
-          ':arrivalPlace': arrivalPlace,
-          ':idPhotoKey': idPhotoKey,
-          ':submittedAt': new Date().toISOString(),
-        },
+        UpdateExpression: `SET ${updateExpressions.join(', ')}`,
+        ExpressionAttributeValues: expressionAttributeValues,
       })
     );
 
