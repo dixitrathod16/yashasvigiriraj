@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { dynamoDb } from '@/lib/dynamodb';
 
 const USER_TABLE = 'user_registrations';
@@ -24,13 +24,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use Scan to find registration by id attribute
-    // Note: In production, consider adding a GSI on id field for better performance
-    
+    // Use Query with GSI on id field for efficient lookup
     const result = await dynamoDb.send(
-      new ScanCommand({
+      new QueryCommand({
         TableName: USER_TABLE,
-        FilterExpression: 'id = :id',
+        IndexName: 'RegistrationIdIndex', // GSI name - needs to be created in DynamoDB
+        KeyConditionExpression: 'id = :id',
         ExpressionAttributeValues: {
           ':id': registrationId.toUpperCase(),
         },
@@ -38,6 +37,7 @@ export async function POST(request: Request) {
     );
 
     if (!result.Items || result.Items.length === 0) {
+      console.log(`Registration ID ${registrationId} not found`);
       return NextResponse.json(
         { error: 'No registration found for this ID' },
         { status: 404 }
@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     }
 
     const registration = result.Items[0];
+    console.log(`Registration ID ${registrationId} found`);
 
     // Only return if status is APPROVED
     if (registration.status !== 'APPROVED') {
