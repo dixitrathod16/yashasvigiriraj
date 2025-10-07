@@ -56,7 +56,9 @@ interface Registration {
     createdAt: string;
     status: 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED' | 'INACTIVE';
     arrivalDate?: string;
+    arrivalTime?: string;
     arrivalPlace?: string;
+    additionalNotes?: string;
     idPhotoKey?: string;
     travelDetailsSubmittedAt?: string;
 }
@@ -1010,7 +1012,9 @@ export function Registration() {
             { header: 'Created At', key: 'createdAt', width: 20 },
             { header: 'Status', key: 'status', width: 14 },
             { header: 'Arrival Date', key: 'arrivalDate', width: 16 },
+            { header: 'Arrival Time', key: 'arrivalTime', width: 14 },
             { header: 'Arrival Place', key: 'arrivalPlace', width: 16 },
+            { header: 'Additional Notes', key: 'additionalNotes', width: 30 },
             { header: 'Travel Details Submitted', key: 'travelDetailsSubmittedAt', width: 20 },
         ];
         
@@ -2198,11 +2202,25 @@ export function Registration() {
                                                         </p>
                                                     </div>
                                                 )}
+                                                {/* Arrival Time */}
+                                                {selectedRegistration.arrivalTime && (
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-medium text-gray-500">Arrival Time</Label>
+                                                        <p className="text-base font-medium text-gray-900">{selectedRegistration.arrivalTime}</p>
+                                                    </div>
+                                                )}
                                                 {/* Arrival Place */}
                                                 {selectedRegistration.arrivalPlace && (
                                                     <div className="space-y-2">
                                                         <Label className="text-sm font-medium text-gray-500">Arrival Place</Label>
                                                         <p className="text-base font-medium text-gray-900">{selectedRegistration.arrivalPlace}</p>
+                                                    </div>
+                                                )}
+                                                {/* Additional Notes */}
+                                                {selectedRegistration.additionalNotes && (
+                                                    <div className="space-y-2 col-span-2">
+                                                        <Label className="text-sm font-medium text-gray-500">Additional Notes</Label>
+                                                        <p className="text-base text-gray-900 whitespace-pre-wrap">{selectedRegistration.additionalNotes}</p>
                                                     </div>
                                                 )}
                                                 {/* Travel Details Submitted At */}
