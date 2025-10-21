@@ -76,7 +76,7 @@ async function checkForDuplicate(aadharNumber: number, formType: RecordType): Pr
 
     if (result.Responses?.[USER_TABLE]?.length) {
       for (const data of result.Responses?.[USER_TABLE]) {
-        if ((formType === data.formType) || (Number(aadharNumber) !== Number('999999999999') && nonDuplicateCategories.includes(formType) && nonDuplicateCategories.includes(data.formType))) {
+        if (data.status !== 'INACTIVE' && ((formType === data.formType) || (Number(aadharNumber) !== Number('999999999999') && nonDuplicateCategories.includes(formType) && nonDuplicateCategories.includes(data.formType)))) {
           return true;
         }
       }
