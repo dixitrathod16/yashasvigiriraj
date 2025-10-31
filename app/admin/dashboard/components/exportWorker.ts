@@ -64,6 +64,10 @@ self.onmessage = async (e) => {
         arrivalPlace: reg.arrivalPlace || '',
         additionalNotes: reg.additionalNotes || '',
         travelDetailsSubmittedAt: reg.travelDetailsSubmittedAt ? new Date(reg.travelDetailsSubmittedAt).toLocaleString() : '',
+        returnDate: reg.returnDate ? new Date(reg.returnDate).toLocaleDateString('en-GB') : '',
+        busTime: reg.busTime || '',
+        returnDetailsSubmitted: reg.returnDate ? 'Yes' : 'No',
+        returnDetailsSubmittedAt: reg.returnDetailsSubmittedAt ? new Date(reg.returnDetailsSubmittedAt).toLocaleString() : '',
         photo: '',
         aadhar: '',
       });

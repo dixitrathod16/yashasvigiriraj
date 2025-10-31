@@ -693,10 +693,10 @@ export default function ArrivalDetailsPage() {
       setRegistration(data.registration);
       
       // Check if travel details already submitted
-      // if (data.registration.arrivalDate && data.registration.arrivalPlace && data.registration.idPhotoKey) {
-      //   setError('Arrival details have already been submitted for this registration.');
-      //   return;
-      // }
+      if (data.registration.arrivalDate && data.registration.arrivalPlace && data.registration.idPhotoKey) {
+        setError('Arrival details have already been submitted for this registration.');
+        return;
+      }
       
       setStep('form');
       window.scrollTo({ top: 0, behavior: 'smooth' });
