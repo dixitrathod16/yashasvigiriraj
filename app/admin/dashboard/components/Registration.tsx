@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -165,7 +166,7 @@ export function Registration() {
         formType: '',
         createdAtFrom: '',
         createdAtTo: '',
-        status: '',
+        // status: removed - use statusFilter state instead (line 134)
     });
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const [gotoPageInput, setGotoPageInput] = useState<string>('');
@@ -336,7 +337,8 @@ export function Registration() {
             if (advancedFilters.hasParticipatedBefore === 'false' && reg.hasParticipatedBefore) return false;
         }
         if (advancedFilters.formType && advancedFilters.formType !== 'any' && reg.formType !== advancedFilters.formType) return false;
-        if (advancedFilters.status && advancedFilters.status !== 'any' && reg.status !== advancedFilters.status) return false;
+        // Note: Status filtering is handled separately via statusFilter state (lines 369-372)
+        // Removed advancedFilters.status to prevent double-filtering conflict
         if (advancedFilters.createdAtFrom && advancedFilters.createdAtTo) {
             const from = new Date(advancedFilters.createdAtFrom);
             const to = new Date(advancedFilters.createdAtTo);
@@ -373,7 +375,9 @@ export function Registration() {
 
     // Pagination logic
     const totalPages = Math.ceil(filteredRegistrations.length / pageSize);
-    const paginatedRegistrations = filteredRegistrations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    // Ensure currentPage is within valid range
+    const validCurrentPage = Math.min(currentPage, Math.max(1, totalPages));
+    const paginatedRegistrations = filteredRegistrations.slice((validCurrentPage - 1) * pageSize, validCurrentPage * pageSize);
 
     // Multiselect helper functions
     const toggleRegistrationSelection = (id: string) => {
@@ -497,7 +501,7 @@ export function Registration() {
     ];
 
     // Helper for filter chips
-    const filterLabels: Record<string, string> = {
+    const filterLabels = useMemo<Record<string, string>>(() => ({
         id: 'Registration ID',
         fullName: 'Full Name',
         city: 'City',
@@ -511,7 +515,7 @@ export function Registration() {
         hasParticipatedBefore: 'Previous Participation',
         createdAtFrom: 'Created From',
         createdAtTo: 'Created To',
-    };
+    }), []);
     const filterValueDisplay = (key: string, value: string) => {
         if (key === 'gender') return value === 'M' ? 'Male' : value === 'F' ? 'Female' : value;
         if (key === 'hasParticipatedBefore') return value === 'true' ? 'Yes' : value === 'false' ? 'No' : value;
@@ -526,7 +530,7 @@ export function Registration() {
                 label: filterLabels[key] || key,
                 value: filterValueDisplay(key, value),
             }));
-    }, [advancedFilters]);
+    }, [advancedFilters, filterLabels]);
 
     const removeFilter = (key: string) => {
         setAdvancedFilters(f => ({ ...f, [key]: '' }));
@@ -553,7 +557,6 @@ export function Registration() {
             formType: '',
             createdAtFrom: '',
             createdAtTo: '',
-            status: '',
         });
     };
 
@@ -571,6 +574,20 @@ export function Registration() {
     useEffect(() => {
         fetchRegistrations();
     }, []);
+
+    // Reset current page when advanced filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [advancedFilters]);
+
+    // Ensure currentPage stays within valid bounds when totalPages changes
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(totalPages);
+        } else if (totalPages === 0) {
+            setCurrentPage(1);
+        }
+    }, [totalPages, currentPage]);
 
     const fetchRegistrations = async () => {
         try {
@@ -628,7 +645,11 @@ export function Registration() {
     };
 
     const handleEdit = (registration: Registration) => {
-        setEditForm({ ...registration });
+        const initialEditForm: Partial<Registration> = { ...registration };
+        if ((registration.formType === 'SAN' || registration.formType === 'CHA') && !registration.returnDate) {
+            initialEditForm.returnDate = '2025-12-07';
+        }
+        setEditForm(initialEditForm);
         setEditErrors({});
         setIsEditing(true);
     };
@@ -884,6 +905,7 @@ export function Registration() {
                     body: JSON.stringify({
                         formType: selectedRegistration.formType,
                         aadharNumber: selectedRegistration.aadharNumber,
+                        hardDelete: true,
                     }),
                 });
                 if (!delRes.ok) {
@@ -1476,12 +1498,12 @@ export function Registration() {
         if (totalPages <= 5) {
             for (let i = 1; i <= totalPages; i++) pages.push(i);
         } else {
-            if (currentPage <= 3) {
+            if (validCurrentPage <= 3) {
                 pages.push(1, 2, 3, 4, '...', totalPages);
-            } else if (currentPage >= totalPages - 2) {
+            } else if (validCurrentPage >= totalPages - 2) {
                 pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
             } else {
-                pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+                pages.push(1, '...', validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, '...', totalPages);
             }
         }
         return pages;
@@ -1490,13 +1512,13 @@ export function Registration() {
     const paginationBar = (
         <div className="flex flex-col md:flex-row md:justify-between md:items-center items-stretch gap-2 mt-4 w-full">
             <div className="flex flex-wrap justify-center items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>&lt; Prev</Button>
+                <Button size="sm" variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={validCurrentPage === 1}>&lt; Prev</Button>
                 {getPageNumbers().map((page, idx) =>
                     typeof page === 'number' ? (
                         <Button
                             key={page}
                             size="sm"
-                            variant={currentPage === page ? 'default' : 'outline'}
+                            variant={validCurrentPage === page ? 'default' : 'outline'}
                             onClick={() => setCurrentPage(page)}
                             className="w-9 px-0"
                         >
@@ -1506,7 +1528,7 @@ export function Registration() {
                         <span key={"ellipsis-" + idx} className="px-2 text-gray-400 select-none">...</span>
                     )
                 )}
-                <Button size="sm" variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0}>Next &gt;</Button>
+                <Button size="sm" variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={validCurrentPage === totalPages || totalPages === 0}>Next &gt;</Button>
                 {/* Go to Page input */}
                 <form
                     onSubmit={e => {
@@ -2205,110 +2227,110 @@ export function Registration() {
                                         </div>
                                     </div>
 
-                                    {/* Travel Details (if available) */}
-                                    {(selectedRegistration.arrivalDate || selectedRegistration.arrivalPlace || selectedRegistration.idPhotoKey) && (
-                                        <div className="space-y-2 pt-2 border-t">
-                                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                Arrival Details
-                                            </h3>
-                                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                                                {/* Arrival Date */}
-                                                {(selectedRegistration.arrivalDate || isEditing) && (
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium text-gray-500">Arrival Date</Label>
-                                                        {isEditing ? (
-                                                            <Input 
-                                                                name="arrivalDate" 
-                                                                type="date" 
-                                                                value={editForm?.arrivalDate || ''} 
-                                                                onChange={handleEditChange}
-                                                                min={editForm?.formType ? ARRIVAL_DATE_CONFIGS[editForm.formType as keyof typeof ARRIVAL_DATE_CONFIGS]?.minDate : undefined}
-                                                                max={editForm?.formType ? ARRIVAL_DATE_CONFIGS[editForm.formType as keyof typeof ARRIVAL_DATE_CONFIGS]?.maxDate : undefined}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-base font-medium text-gray-900">
-                                                                {selectedRegistration.arrivalDate && new Date(selectedRegistration.arrivalDate).toLocaleDateString('en-GB', { 
-                                                                    day: '2-digit', 
-                                                                    month: 'short', 
-                                                                    year: 'numeric' 
-                                                                })}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {/* Arrival Time */}
-                                                {(selectedRegistration.arrivalTime || isEditing) && (
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium text-gray-500">Arrival Time</Label>
-                                                        {isEditing ? (
-                                                            <Input 
-                                                                name="arrivalTime" 
-                                                                type="time" 
-                                                                value={editForm?.arrivalTime || ''} 
-                                                                onChange={handleEditChange} 
-                                                            />
-                                                        ) : (
-                                                            <p className="text-base font-medium text-gray-900">{selectedRegistration.arrivalTime}</p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {/* Arrival Place */}
-                                                {(selectedRegistration.arrivalPlace || isEditing) && (
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium text-gray-500">Arrival Place</Label>
-                                                        {isEditing ? (
-                                                            <select 
-                                                                name="arrivalPlace" 
-                                                                value={editForm?.arrivalPlace || ''} 
-                                                                onChange={handleEditChange}
-                                                                className="w-full border rounded px-3 py-2 text-sm"
-                                                            >
-                                                                <option value="">Select place</option>
-                                                                {editForm?.formType && ARRIVAL_DATE_CONFIGS[editForm.formType as keyof typeof ARRIVAL_DATE_CONFIGS]?.places.map((place) => (
-                                                                    <option key={place} value={place}>{place}</option>
-                                                                ))}
-                                                            </select>
-                                                        ) : (
-                                                            <p className="text-base font-medium text-gray-900">{selectedRegistration.arrivalPlace}</p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {/* Additional Notes */}
-                                                {(selectedRegistration.additionalNotes || isEditing) && (
-                                                    <div className="space-y-2 col-span-2">
-                                                        <Label className="text-sm font-medium text-gray-500">Additional Notes</Label>
-                                                        {isEditing ? (
-                                                            <textarea 
-                                                                name="additionalNotes" 
-                                                                value={editForm?.additionalNotes || ''} 
-                                                                onChange={handleEditChange} 
-                                                                className="w-full border rounded px-3 py-2 text-sm min-h-[80px]"
-                                                                placeholder="Additional notes about arrival"
-                                                            />
-                                                        ) : (
-                                                            <p className="text-base text-gray-900 whitespace-pre-wrap">{selectedRegistration.additionalNotes}</p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {/* Travel Details Submitted At */}
-                                                {selectedRegistration.travelDetailsSubmittedAt && (
-                                                    <div className="space-y-2 col-span-2">
-                                                        <Label className="text-sm font-medium text-gray-500">Submitted At</Label>
-                                                        <p className="text-sm text-gray-600">
-                                                            {new Date(selectedRegistration.travelDetailsSubmittedAt).toLocaleString()}
-                                                        </p>
-                                                    </div>
+                                    {/* Travel Details */}
+                                    <div className="space-y-2 pt-2 border-t">
+                                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Arrival Details
+                                        </h3>
+                                        {(!selectedRegistration.arrivalDate && !selectedRegistration.arrivalTime && !selectedRegistration.arrivalPlace && !selectedRegistration.additionalNotes && !selectedRegistration.travelDetailsSubmittedAt && !isEditing) && (
+                                            <p className="text-sm text-gray-500 italic">Arrival details not submitted yet.</p>
+                                        )}
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            {/* Arrival Date */}
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium text-gray-500">Arrival Date</Label>
+                                                {isEditing ? (
+                                                    <Input 
+                                                        name="arrivalDate" 
+                                                        type="date" 
+                                                        value={editForm?.arrivalDate || ''} 
+                                                        onChange={handleEditChange}
+                                                        min={editForm?.formType ? ARRIVAL_DATE_CONFIGS[editForm.formType as keyof typeof ARRIVAL_DATE_CONFIGS]?.minDate : undefined}
+                                                        max={editForm?.formType ? ARRIVAL_DATE_CONFIGS[editForm.formType as keyof typeof ARRIVAL_DATE_CONFIGS]?.maxDate : undefined}
+                                                    />
+                                                ) : selectedRegistration.arrivalDate ? (
+                                                    <p className="text-base font-medium text-gray-900">
+                                                        {new Date(selectedRegistration.arrivalDate).toLocaleDateString('en-GB', { 
+                                                            day: '2-digit', 
+                                                            month: 'short', 
+                                                            year: 'numeric' 
+                                                        })}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-sm text-gray-500 italic">Not provided</p>
                                                 )}
                                             </div>
+                                            {/* Arrival Time */}
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium text-gray-500">Arrival Time</Label>
+                                                {isEditing ? (
+                                                    <Input 
+                                                        name="arrivalTime" 
+                                                        type="time" 
+                                                        value={editForm?.arrivalTime || ''} 
+                                                        onChange={handleEditChange} 
+                                                    />
+                                                ) : selectedRegistration.arrivalTime ? (
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.arrivalTime}</p>
+                                                ) : (
+                                                    <p className="text-sm text-gray-500 italic">Not provided</p>
+                                                )}
+                                            </div>
+                                            {/* Arrival Place */}
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium text-gray-500">Arrival Place</Label>
+                                                {isEditing ? (
+                                                    <select 
+                                                        name="arrivalPlace" 
+                                                        value={editForm?.arrivalPlace || ''} 
+                                                        onChange={handleEditChange}
+                                                        className="w-full border rounded px-3 py-2 text-sm"
+                                                    >
+                                                        <option value="">Select place</option>
+                                                        {editForm?.formType && ARRIVAL_DATE_CONFIGS[editForm.formType as keyof typeof ARRIVAL_DATE_CONFIGS]?.places.map((place) => (
+                                                            <option key={place} value={place}>{place}</option>
+                                                        ))}
+                                                    </select>
+                                                ) : selectedRegistration.arrivalPlace ? (
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.arrivalPlace}</p>
+                                                ) : (
+                                                    <p className="text-sm text-gray-500 italic">Not provided</p>
+                                                )}
+                                            </div>
+                                            {/* Additional Notes */}
+                                            <div className="space-y-2 col-span-2">
+                                                <Label className="text-sm font-medium text-gray-500">Additional Notes</Label>
+                                                {isEditing ? (
+                                                    <textarea 
+                                                        name="additionalNotes" 
+                                                        value={editForm?.additionalNotes || ''} 
+                                                        onChange={handleEditChange} 
+                                                        className="w-full border rounded px-3 py-2 text-sm min-h-[80px]"
+                                                        placeholder="Additional notes about arrival"
+                                                    />
+                                                ) : selectedRegistration.additionalNotes ? (
+                                                    <p className="text-base text-gray-900 whitespace-pre-wrap">{selectedRegistration.additionalNotes}</p>
+                                                ) : (
+                                                    <p className="text-sm text-gray-500 italic">Not provided</p>
+                                                )}
+                                            </div>
+                                            {/* Travel Details Submitted At */}
+                                            {selectedRegistration.travelDetailsSubmittedAt && (
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Submitted At</Label>
+                                                    <p className="text-sm text-gray-600">
+                                                        {new Date(selectedRegistration.travelDetailsSubmittedAt).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
 
-                                    {/* Return Details (if available) - for SAN/CHA only */}
-                                    {(selectedRegistration.formType === 'SAN' || selectedRegistration.formType === 'CHA') && 
-                                     (selectedRegistration.returnDate || selectedRegistration.busTime) && (
+                                    {/* Return Details - for SAN/CHA only */}
+                                    {(selectedRegistration.formType === 'SAN' || selectedRegistration.formType === 'CHA') && (
                                         <div className="space-y-2 pt-2 border-t">
                                             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                                                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -2316,73 +2338,76 @@ export function Registration() {
                                                 </svg>
                                                 Return Details
                                             </h3>
+                                            {(!selectedRegistration.returnDate && !selectedRegistration.busTime && !selectedRegistration.returnDetailsSubmittedAt && !isEditing) && (
+                                                <p className="text-sm text-gray-500 italic">Return details not submitted yet.</p>
+                                            )}
                                             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                                 {/* Return Date */}
-                                                {(selectedRegistration.returnDate || isEditing) && (
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium text-gray-500">Return Date</Label>
-                                                        {isEditing ? (
-                                                            <div className="space-y-1">
-                                                                <Input 
-                                                                    name="returnDate" 
-                                                                    type="date" 
-                                                                    value={editForm?.returnDate || '2025-12-07'} 
-                                                                    onChange={handleEditChange}
-                                                                    min="2025-12-07"
-                                                                    max="2025-12-07"
-                                                                    className="bg-gray-50"
-                                                                />
-                                                                <p className="text-xs text-gray-500">Fixed date: 7th December 2025</p>
-                                                            </div>
-                                                        ) : (
-                                                            <p className="text-base font-medium text-gray-900">
-                                                                {selectedRegistration.returnDate && new Date(selectedRegistration.returnDate).toLocaleDateString('en-GB', { 
-                                                                    day: '2-digit', 
-                                                                    month: 'short', 
-                                                                    year: 'numeric' 
-                                                                })}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Return Date</Label>
+                                                    {isEditing ? (
+                                                        <div className="space-y-1">
+                                                            <Input 
+                                                                name="returnDate" 
+                                                                type="date" 
+                                                                value={editForm?.returnDate || '2025-12-07'} 
+                                                                onChange={handleEditChange}
+                                                                min="2025-12-07"
+                                                                max="2025-12-07"
+                                                                className="bg-gray-50"
+                                                            />
+                                                            <p className="text-xs text-gray-500">Fixed date: 7th December 2025</p>
+                                                        </div>
+                                                    ) : selectedRegistration.returnDate ? (
+                                                        <p className="text-base font-medium text-gray-900">
+                                                            {new Date(selectedRegistration.returnDate).toLocaleDateString('en-GB', { 
+                                                                day: '2-digit', 
+                                                                month: 'short', 
+                                                                year: 'numeric' 
+                                                            })}
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500 italic">Not provided</p>
+                                                    )}
+                                                </div>
                                                 {/* Bus Time */}
-                                                {(selectedRegistration.busTime || isEditing) && (
-                                                    <div className="space-y-2 col-span-2">
-                                                        <Label className="text-sm font-medium text-gray-500">Bus Timing</Label>
-                                                        {isEditing ? (
-                                                            <RadioGroup 
-                                                                value={editForm?.busTime || ''} 
-                                                                onValueChange={(value) => setEditForm(f => ({ ...f!, busTime: value }))}
-                                                                className="space-y-2"
-                                                            >
-                                                                <div className="flex items-center space-x-2 border rounded p-3 hover:bg-gray-50 cursor-pointer">
-                                                                    <RadioGroupItem value="2PM" id="edit-2pm" />
-                                                                    <Label htmlFor="edit-2pm" className="cursor-pointer flex-1 font-normal">
-                                                                        2:00 PM Bus
-                                                                    </Label>
-                                                                </div>
-                                                                <div className="flex items-center space-x-2 border rounded p-3 hover:bg-gray-50 cursor-pointer">
-                                                                    <RadioGroupItem value="6PM" id="edit-6pm" />
-                                                                    <Label htmlFor="edit-6pm" className="cursor-pointer flex-1 font-normal">
-                                                                        6:00 PM Bus
-                                                                    </Label>
-                                                                </div>
-                                                                <div className="flex items-center space-x-2 border rounded p-3 hover:bg-gray-50 cursor-pointer">
-                                                                    <RadioGroupItem value="SELF" id="edit-self" />
-                                                                    <Label htmlFor="edit-self" className="cursor-pointer flex-1 font-normal">
-                                                                        Self Arrangement
-                                                                    </Label>
-                                                                </div>
-                                                            </RadioGroup>
-                                                        ) : (
-                                                            <p className="text-base font-medium text-gray-900">
-                                                                {selectedRegistration.busTime === '2PM' && '2:00 PM Bus'}
-                                                                {selectedRegistration.busTime === '6PM' && '6:00 PM Bus'}
-                                                                {selectedRegistration.busTime === 'SELF' && 'Self Arrangement'}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Bus Timing</Label>
+                                                    {isEditing ? (
+                                                        <RadioGroup 
+                                                            value={editForm?.busTime || ''} 
+                                                            onValueChange={(value) => setEditForm(f => ({ ...f!, busTime: value }))}
+                                                            className="space-y-2"
+                                                        >
+                                                            <div className="flex items-center space-x-2 border rounded p-3 hover:bg-gray-50 cursor-pointer">
+                                                                <RadioGroupItem value="2PM" id="edit-2pm" />
+                                                                <Label htmlFor="edit-2pm" className="cursor-pointer flex-1 font-normal">
+                                                                    2:00 PM Bus
+                                                                </Label>
+                                                            </div>
+                                                            <div className="flex items-center space-x-2 border rounded p-3 hover:bg-gray-50 cursor-pointer">
+                                                                <RadioGroupItem value="6PM" id="edit-6pm" />
+                                                                <Label htmlFor="edit-6pm" className="cursor-pointer flex-1 font-normal">
+                                                                    6:00 PM Bus
+                                                                </Label>
+                                                            </div>
+                                                            <div className="flex items-center space-x-2 border rounded p-3 hover:bg-gray-50 cursor-pointer">
+                                                                <RadioGroupItem value="SELF" id="edit-self" />
+                                                                <Label htmlFor="edit-self" className="cursor-pointer flex-1 font-normal">
+                                                                    Self Arrangement
+                                                                </Label>
+                                                            </div>
+                                                        </RadioGroup>
+                                                    ) : selectedRegistration.busTime ? (
+                                                        <p className="text-base font-medium text-gray-900">
+                                                            {selectedRegistration.busTime === '2PM' && '2:00 PM Bus'}
+                                                            {selectedRegistration.busTime === '6PM' && '6:00 PM Bus'}
+                                                            {selectedRegistration.busTime === 'SELF' && 'Self Arrangement'}
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500 italic">Not provided</p>
+                                                    )}
+                                                </div>
                                                 {/* Return Details Submitted At */}
                                                 {selectedRegistration.returnDetailsSubmittedAt && (
                                                     <div className="space-y-2 col-span-2">

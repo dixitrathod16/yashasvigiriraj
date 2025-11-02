@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dynamoDb } from '@/lib/dynamodb';
-import { ScanCommand, UpdateCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { ScanCommand, UpdateCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 
 const TABLE_NAME = 'user_registrations';
 
@@ -149,20 +149,35 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { formType, aadharNumber } = await request.json();
+    const { formType, aadharNumber, hardDelete } = await request.json();
     if (!formType || typeof aadharNumber === 'undefined') {
       return NextResponse.json(
         { error: 'Missing required keys (formType, aadharNumber)' },
         { status: 400 }
       );
     }
-    
+
+    const numericAadhar = Number(aadharNumber);
+
+    if (hardDelete) {
+      const command = new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          formType,
+          aadharNumber: numericAadhar,
+        },
+      });
+
+      await dynamoDb.send(command);
+      return NextResponse.json({ success: true, deleted: true });
+    }
+
     // Perform soft delete by updating status to 'INACTIVE'
     const command = new UpdateCommand({
       TableName: TABLE_NAME,
       Key: {
         formType,
-        aadharNumber: Number(aadharNumber),
+        aadharNumber: numericAadhar,
       },
       UpdateExpression: 'SET #status = :status',
       ExpressionAttributeNames: {
@@ -173,13 +188,13 @@ export async function DELETE(request: Request) {
       },
       ReturnValues: 'ALL_NEW',
     });
-    
+
     const result = await dynamoDb.send(command);
     return NextResponse.json({ success: true, updated: result.Attributes });
   } catch (error) {
-    console.error('Error performing soft delete on registration:', error);
+    console.error('Error performing delete on registration:', error);
     return NextResponse.json(
-      { error: 'Failed to perform soft delete on registration' },
+      { error: 'Failed to delete registration' },
       { status: 500 }
     );
   }
