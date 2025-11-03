@@ -31,6 +31,13 @@ interface UploadUrlResponse {
   uploadType: 'idPhoto';
 }
 
+// Form closure configuration
+const FORM_CLOSED = true; // Set to false to reopen the form
+const CLOSURE_MESSAGE = {
+  hi: 'आगमन विवरण प्रस्तुत करने की अंतिम तिथि समाप्त हो गई है। कृपया अगली सूचना की प्रतीक्षा करें।',
+  en: 'The deadline for submitting arrival details has passed. Please wait for further instructions.'
+};
+
 // Date configurations based on formType
 const DATE_CONFIGS = {
   SAN: {
@@ -672,6 +679,13 @@ export default function ArrivalDetailsPage() {
   // Handler for registration ID lookup
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if form is closed
+    if (FORM_CLOSED) {
+      setError(CLOSURE_MESSAGE.en);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
 
@@ -969,26 +983,68 @@ export default function ArrivalDetailsPage() {
                   <CardTitle className="text-2xl font-semibold text-gray-700">
                     Submit Arrival Details
                   </CardTitle>
-                  <CardDescription className="text-base mt-3 flex items-center justify-center gap-2">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                      <CheckCircle className="w-4 h-4" />
-                      केवल स्वीकृत आवेदकों के लिए
-                    </div>
-                  </CardDescription>
-                  <CardDescription className="text-sm text-gray-600">
-                    For Approved Applicants Only
-                  </CardDescription>
+                  {FORM_CLOSED ? (
+                    <CardDescription className="text-base mt-3 flex items-center justify-center gap-2">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                        <X className="w-4 h-4" />
+                        फॉर्म बंद / Form Closed
+                      </div>
+                    </CardDescription>
+                  ) : (
+                    <>
+                      <CardDescription className="text-base mt-3 flex items-center justify-center gap-2">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                          <CheckCircle className="w-4 h-4" />
+                          केवल स्वीकृत आवेदकों के लिए
+                        </div>
+                      </CardDescription>
+                      <CardDescription className="text-sm text-gray-600">
+                        For Approved Applicants Only
+                      </CardDescription>
+                    </>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="p-8 md:p-10">
-                {error && (
-                  <Alert variant="destructive" className="mb-6">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                
-                <form onSubmit={handleLookup} className="space-y-6">
+                {FORM_CLOSED ? (
+                  <div className="space-y-6">
+                    <Alert className="mb-6 border-2 border-red-200 bg-red-50">
+                      <AlertCircle className="h-5 w-5 text-red-600" />
+                      <AlertDescription className="text-red-900 font-medium">
+                        <div className="space-y-2">
+                          <p className="text-base">{CLOSURE_MESSAGE.hi}</p>
+                          <p className="text-sm">{CLOSURE_MESSAGE.en}</p>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <div className="bg-gradient-to-br from-orange-50 to-green-50 rounded-xl p-6 border-2 border-orange-100">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                            <AlertCircle className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-3">
+                          <h3 className="text-lg font-bold text-gray-900">महत्वपूर्ण सूचना / Important Notice</h3>
+                          <div className="text-sm text-gray-700 space-y-2">
+                            <p>यदि आपने अपना आगमन विवरण पहले से प्रस्तुत नहीं किया है, तो कृपया संपर्क करें।</p>
+                            <p className="text-xs text-gray-600">If you have not submitted your arrival details yet, please contact us for assistance.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {error && (
+                      <Alert variant="destructive" className="mb-6">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    <form onSubmit={handleLookup} className="space-y-6">
                   <div className="space-y-3">
                     <Label htmlFor="regId" className="text-lg font-semibold flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -1031,6 +1087,8 @@ export default function ArrivalDetailsPage() {
                     )}
                   </Button>
                 </form>
+                  </>
+                )}
               </CardContent>
             </Card>
           </motion.section>
