@@ -85,6 +85,7 @@ interface Registration {
     returnDate?: string;
     busTime?: string;
     returnDetailsSubmittedAt?: string;
+    group?: string;
 }
 
 // Categories data
@@ -143,7 +144,7 @@ export function Registration() {
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
     const [isContactExportDialogOpen, setIsContactExportDialogOpen] = useState(false);
     const [includeImages, setIncludeImages] = useState(true);
-    const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt' | 'city' | 'village'>('createdAt');
+    const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt' | 'city' | 'village' | 'group'>('createdAt');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [advancedFilters, setAdvancedFilters] = useState({
         id: '',
@@ -156,6 +157,7 @@ export function Registration() {
         city: '',
         pinCode: '',
         village: '',
+        group: '',
         aadharNumber: '',
         phoneNumber: '',
         whatsappNumber: '',
@@ -166,7 +168,6 @@ export function Registration() {
         formType: '',
         createdAtFrom: '',
         createdAtTo: '',
-        // status: removed - use statusFilter state instead (line 134)
     });
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const [gotoPageInput, setGotoPageInput] = useState<string>('');
@@ -194,27 +195,36 @@ export function Registration() {
 
     // Sorting function
     const sortRegistrations = (a: Registration, b: Registration) => {
-        const aValue = a[sortColumn];
-        const bValue = b[sortColumn];
-
-        if (sortColumn === 'age') {
-            // Ensure age is treated as a number
-            return sortOrder === 'asc' ? Number(aValue) - Number(bValue) : Number(bValue) - Number(aValue);
-        } else if (sortColumn === 'createdAt') {
-            // Sort createdAt as a date
-            return sortOrder === 'asc' ? new Date(aValue).getTime() - new Date(bValue).getTime() : new Date(bValue).getTime() - new Date(aValue).getTime();
-        } else if (sortColumn === 'fullName') {
-            // Case-insensitive, trimmed, and normalized alphabetical sort for names
-            const aName = String(aValue).trim().normalize('NFKD');
-            const bName = String(bValue).trim().normalize('NFKD');
-            return sortOrder === 'asc'
-                ? aName.localeCompare(bName, undefined, { sensitivity: 'base' })
-                : bName.localeCompare(aName, undefined, { sensitivity: 'base' });
-        } else {
-            // Sort other fields (including city and village) as strings
-            return sortOrder === 'asc' ?
-                String(aValue).localeCompare(String(bValue)) :
-                String(bValue).localeCompare(String(aValue));
+        switch (sortColumn) {
+            case 'age': {
+                const ageA = Number(a.age) || 0;
+                const ageB = Number(b.age) || 0;
+                return sortOrder === 'asc' ? ageA - ageB : ageB - ageA;
+            }
+            case 'createdAt': {
+                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+            }
+            case 'fullName': {
+                const aName = (a.fullName || '').trim().normalize('NFKD');
+                const bName = (b.fullName || '').trim().normalize('NFKD');
+                return sortOrder === 'asc'
+                    ? aName.localeCompare(bName, undefined, { sensitivity: 'base' })
+                    : bName.localeCompare(aName, undefined, { sensitivity: 'base' });
+            }
+            case 'id':
+            case 'city':
+            case 'village':
+            case 'group': {
+                const valueA = (a[sortColumn] ?? '').toString().trim().toLowerCase();
+                const valueB = (b[sortColumn] ?? '').toString().trim().toLowerCase();
+                return sortOrder === 'asc'
+                    ? valueA.localeCompare(valueB)
+                    : valueB.localeCompare(valueA);
+            }
+            default:
+                return 0;
         }
     };
 
@@ -288,6 +298,19 @@ export function Registration() {
                         .trim()
                         .normalize('NFKD')
                 )
+        ) return false;
+        if (
+            advancedFilters.group &&
+            !(String(reg.group ?? '')
+                .toLowerCase()
+                .trim()
+                .normalize('NFKD')
+                .includes(
+                    advancedFilters.group
+                        .toLowerCase()
+                        .trim()
+                        .normalize('NFKD')
+                ))
         ) return false;
         if (
             advancedFilters.existingTapasya &&
@@ -506,9 +529,12 @@ export function Registration() {
         fullName: 'Full Name',
         city: 'City',
         village: 'Village',
+        group: 'Group',
         linkedForm: 'Linked Form',
         aadharNumber: 'Aadhar Number',
         phoneNumber: 'Phone Number',
+        whatsappNumber: 'WhatsApp Number',
+        emergencyContact: 'Emergency Contact',
         ageMin: 'Age Min',
         ageMax: 'Age Max',
         gender: 'Gender',
@@ -547,6 +573,7 @@ export function Registration() {
             city: '',
             pinCode: '',
             village: '',
+            group: '',
             aadharNumber: '',
             phoneNumber: '',
             whatsappNumber: '',
@@ -1072,7 +1099,7 @@ export function Registration() {
             { header: 'Aadhar', key: 'aadhar', width: 20 },
         ] : [];
         
-        const columns = [...baseColumns, ...imageColumns];
+        const columns = [...baseColumns, { header: 'Group', key: 'group', width: 14 }, ...imageColumns];
         const imageSize = { width: 80, height: 100 };
         const registrationsObj = { all: registrations, filtered: filteredRegistrations };
         // Store the worker instance for cancellation
@@ -1297,9 +1324,9 @@ export function Registration() {
                 </div>
             </div>
             <div className="flex flex-row gap-2 items-end">
-                <div className="flex flex-col flex-1  gap-1">
-                    <label className="text-xs text-gray-700 font-semibold">Aadhar Number</label>
-                    <Input type="number" className="h-7 text-xs" value={advancedFilters.aadharNumber} onChange={e => setAdvancedFilters(f => ({ ...f, aadharNumber: e.target.value }))} />
+                <div className="flex flex-col flex-1 gap-1">
+                    <label className="text-xs text-gray-700 font-semibold">Group</label>
+                    <Input className="h-7 text-xs" value={advancedFilters.group} onChange={e => setAdvancedFilters(f => ({ ...f, group: e.target.value }))} />
                 </div>
                 <div className="flex flex-col flex-1  gap-1">
                     <label className="text-xs text-gray-700 font-semibold">Linked Form</label>
@@ -1308,19 +1335,22 @@ export function Registration() {
             </div>
             <div className="flex flex-row gap-2 items-end">
                 <div className="flex flex-col flex-1 gap-1">
+                    <label className="text-xs text-gray-700 font-semibold">Aadhar Number</label>
+                    <Input type="number" className="h-7 text-xs" value={advancedFilters.aadharNumber} onChange={e => setAdvancedFilters(f => ({ ...f, aadharNumber: e.target.value }))} />
+                </div>
+                <div className="flex flex-col flex-1 gap-1">
                     <label className="text-xs text-gray-700 font-semibold">Phone Number</label>
                     <Input type="number" className="h-7 text-xs" value={advancedFilters.phoneNumber} onChange={e => setAdvancedFilters(f => ({ ...f, phoneNumber: e.target.value }))} />
                 </div>
+            </div>
+            <div className="flex flex-row gap-2 items-end">
                 <div className="flex flex-col flex-1 gap-1">
-                    <label className="text-xs text-gray-700 font-semibold">Gender</label>
-                    <Select value={advancedFilters.gender} onValueChange={v => setAdvancedFilters(f => ({ ...f, gender: v }))}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
-                        <SelectContent className="z-[70]">
-                            <SelectItem value="any">Any</SelectItem>
-                            <SelectItem value="M">Male</SelectItem>
-                            <SelectItem value="F">Female</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <label className="text-xs text-gray-700 font-semibold">WhatsApp Number</label>
+                    <Input type="number" className="h-7 text-xs" value={advancedFilters.whatsappNumber} onChange={e => setAdvancedFilters(f => ({ ...f, whatsappNumber: e.target.value }))} />
+                </div>
+                <div className="flex flex-col flex-1 gap-1">
+                    <label className="text-xs text-gray-700 font-semibold">Emergency Contact</label>
+                    <Input type="number" className="h-7 text-xs" value={advancedFilters.emergencyContact} onChange={e => setAdvancedFilters(f => ({ ...f, emergencyContact: e.target.value }))} />
                 </div>
             </div>
             <div className="flex flex-row gap-2 items-end">
@@ -1611,6 +1641,7 @@ export function Registration() {
                     <option value="age">Age</option>
                     <option value="city">City</option>
                     <option value="village">Village</option>
+                    <option value="group">Group</option>
                 </select>
                 <Button
                     size="sm"
@@ -1809,6 +1840,12 @@ export function Registration() {
                             </TableHead>
                             <TableHead
                                 className="cursor-pointer hover:bg-gray-50 transition-colors"
+                                onClick={() => { setSortColumn('group'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                            >
+                                Group <span className="inline-block align-middle ml-1">{sortColumn === 'group' ? (sortOrder === 'asc' ? <span className="text-primary">↑</span> : <span className="text-primary">↓</span>) : <span className="text-gray-400">↕</span>}</span>
+                            </TableHead>
+                            <TableHead
+                                className="cursor-pointer hover:bg-gray-50 transition-colors"
                                 onClick={() => { setSortColumn('createdAt'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
                             >
                                 Date <span className="inline-block align-middle ml-1">{sortColumn === 'createdAt' ? (sortOrder === 'asc' ? <span className="text-primary">↑</span> : <span className="text-primary">↓</span>) : <span className="text-gray-400">↕</span>}</span>
@@ -1851,6 +1888,7 @@ export function Registration() {
                                 <TableCell>{reg.aadharNumber}</TableCell>
                                 <TableCell>{reg.city}</TableCell>
                                 <TableCell>{reg.village}</TableCell>
+                                <TableCell>{reg.group || '—'}</TableCell>
                                 <TableCell>{new Date(reg.createdAt).toLocaleString()}</TableCell>
                                 <TableCell>{reg.age}</TableCell>
                                 <TableCell>{reg.gender === 'M' ? 'Male' : 'Female'}</TableCell>
@@ -2206,6 +2244,15 @@ export function Registration() {
                                     <div className="space-y-2 pt-2 border-t">
                                         <h3 className="text-lg font-semibold text-gray-900">Additional Information</h3>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            {/* Group */}
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium text-gray-500">Group</Label>
+                                                {isEditing ? (
+                                                    <Input name="group" value={editForm?.group || ''} onChange={handleEditChange} placeholder="e.g. 7" />
+                                                ) : (
+                                                    <p className="text-base font-medium text-gray-900">{selectedRegistration.group || 'Not Assigned'}</p>
+                                                )}
+                                            </div>
                                             {/* Linked Form */}
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-medium text-gray-500">Linked Form</Label>
