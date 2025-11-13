@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/files
+/parswamani-images
+/parswamani-selected-images
+/test-output
+/data-imports

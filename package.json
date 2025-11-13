@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate-key": "node scripts/generate-secret.mjs"
+    "generate-key": "node scripts/generate-secret.mjs",
+    "generate-ids": "node generate-id-cards.js",
+    "generate-ids-fast": "node generate-id-cards-optimized.js",
+    "test-positions": "node test-positions.js",
+    "generate-single": "node generate-single-id.js",
+    "list-users": "node list-users.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.731.1",
@@ -43,6 +48,7 @@
     "react": "^18",
     "react-dom": "^18",
     "react-icons": "^5.5.0",
+    "sharp": "^0.34.5",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
@@ -50,12 +56,15 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^0.1.82",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "canvas": "^3.2.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.16",
     "postcss": "^8",
+    "qrcode": "^1.5.4",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }
