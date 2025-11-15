@@ -121,6 +121,10 @@ function identifyMissingAttributes(existingItem, rowData) {
     // } else {
     //   isMissing = existingValue === undefined || existingValue === null || (typeof existingValue === 'string' && existingValue.trim() === '');
     // }
+
+    // if (existingValue !== cellValue) {
+    //   console.log(`${key} updated for ${existingItem.id} with old value ${existingValue} and new value ${cellValue}`);
+    // }
     const isMissing = existingValue === undefined || existingValue === null || (typeof existingValue === 'string' && existingValue.trim() === '');
 
     if (isMissing) {

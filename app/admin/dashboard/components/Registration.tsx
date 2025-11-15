@@ -86,6 +86,21 @@ interface Registration {
     busTime?: string;
     returnDetailsSubmittedAt?: string;
     group?: string;
+    // Allotment fields
+    busNo?: string;
+    tentNo?: string;
+    roomNo?: string;
+    nakodaBlock?: string;
+    nakodaRoom?: string;
+    tarangaBlock?: string;
+    tarangaRoom?: string;
+    sankeshwarBlock?: string;
+    sankeshwarRoom?: string;
+    girnarBlock?: string;
+    girnarRoom?: string;
+    palitanaBlock?: string;
+    palitanaRoom?: string;
+    navanuRoom?: string;
 }
 
 // Categories data
@@ -821,7 +836,25 @@ export function Registration() {
         } else if (Number(form.emergencyContact) !== Number('9999999999') && form.emergencyContact === form.phoneNumber) {
             errors.emergencyContact = 'Emergency number should be different from mobile number';
         }
-        // No validation for optional fields
+        
+        // Validation for allotment fields (max 100 characters)
+        const allotmentFields = [
+            'busNo', 'tentNo', 'roomNo', 
+            'nakodaBlock', 'nakodaRoom', 
+            'tarangaBlock', 'tarangaRoom', 
+            'sankeshwarBlock', 'sankeshwarRoom', 
+            'girnarBlock', 'girnarRoom', 
+            'palitanaBlock', 'palitanaRoom', 
+            'navanuRoom'
+        ];
+        
+        allotmentFields.forEach(field => {
+            const value = form[field as keyof Registration];
+            if (value && typeof value === 'string' && value.length > 100) {
+                errors[field] = 'Field value cannot exceed 100 characters';
+            }
+        });
+        
         return errors;
     }
 
@@ -854,12 +887,32 @@ export function Registration() {
         if (Object.keys(errors).length > 0) return;
         setEditLoading(true);
         const aadharChanged = String(editForm.aadharNumber) !== String(selectedRegistration.aadharNumber);
+        
+        // Trim whitespace from allotment fields
+        const allotmentFields = [
+            'busNo', 'tentNo', 'roomNo', 
+            'nakodaBlock', 'nakodaRoom', 
+            'tarangaBlock', 'tarangaRoom', 
+            'sankeshwarBlock', 'sankeshwarRoom', 
+            'girnarBlock', 'girnarRoom', 
+            'palitanaBlock', 'palitanaRoom', 
+            'navanuRoom'
+        ];
+        
+        const trimmedEditForm = { ...editForm };
+        allotmentFields.forEach(field => {
+            const value = trimmedEditForm[field as keyof Registration];
+            if (value && typeof value === 'string') {
+                trimmedEditForm[field as keyof Registration] = value.trim() as never;
+            }
+        });
+        
         try {
             // Find the registration by id to get formType and aadharNumber
             const regIndex = registrations.findIndex(r => r.id === selectedRegistration.id);
             if (regIndex === -1) throw new Error('Registration not found');
             // Update the status in the local state
-            const updatedRegistration = { ...registrations[regIndex], ...editForm };
+            const updatedRegistration = { ...registrations[regIndex], ...trimmedEditForm };
 
             // 1. If new photo or aadhar file, upload to S3 using the same key
             if (newPhotoFile) {
@@ -913,10 +966,10 @@ export function Registration() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        ...editForm,
+                        ...trimmedEditForm,
                         id: selectedRegistration.id, // preserve original registration ID
-                        aadharNumber: editForm.aadharNumber,
-                        formType: editForm.formType,
+                        aadharNumber: trimmedEditForm.aadharNumber,
+                        formType: trimmedEditForm.formType,
                         status: selectedRegistration.status,
                         createdAt: selectedRegistration.createdAt,
                     }),
@@ -949,9 +1002,9 @@ export function Registration() {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        ...editForm,
-                        formType: editForm.formType,
-                        aadharNumber: editForm.aadharNumber,
+                        ...trimmedEditForm,
+                        formType: trimmedEditForm.formType,
+                        aadharNumber: trimmedEditForm.aadharNumber,
                     }),
                 });
                 if (!res.ok) throw new Error('Failed to update registration');
@@ -1093,13 +1146,31 @@ export function Registration() {
             { header: 'Return Details Submitted', key: 'returnDetailsSubmittedAt', width: 20 },
         ];
         
+        // Add allotment field columns
+        const allotmentColumns = [
+            { header: 'Bus Number', key: 'busNo', width: 14 },
+            { header: 'Tent Number', key: 'tentNo', width: 14 },
+            { header: 'Silder/Jirawala Room Number', key: 'roomNo', width: 20 },
+            { header: 'Nakoda Block', key: 'nakodaBlock', width: 14 },
+            { header: 'Nakoda Room', key: 'nakodaRoom', width: 14 },
+            { header: 'Taranga Block', key: 'tarangaBlock', width: 14 },
+            { header: 'Taranga Room', key: 'tarangaRoom', width: 14 },
+            { header: 'Sankeshwar Block', key: 'sankeshwarBlock', width: 16 },
+            { header: 'Sankeshwar Room', key: 'sankeshwarRoom', width: 16 },
+            { header: 'Girnar Block', key: 'girnarBlock', width: 14 },
+            { header: 'Girnar Room', key: 'girnarRoom', width: 14 },
+            { header: 'Palitana Block', key: 'palitanaBlock', width: 14 },
+            { header: 'Palitana Room', key: 'palitanaRoom', width: 14 },
+            { header: 'Navanu Room', key: 'navanuRoom', width: 14 },
+        ];
+        
         // Add image columns only if includeImages is true
         const imageColumns = includeImages ? [
             { header: 'Photo', key: 'photo', width: 20 },
             { header: 'Aadhar', key: 'aadhar', width: 20 },
         ] : [];
         
-        const columns = [...baseColumns, { header: 'Group', key: 'group', width: 14 }, ...imageColumns];
+        const columns = [...baseColumns, { header: 'Group', key: 'group', width: 14 }, ...allotmentColumns, ...imageColumns];
         const imageSize = { width: 80, height: 100 };
         const registrationsObj = { all: registrations, filtered: filteredRegistrations };
         // Store the worker instance for cancellation
@@ -2464,6 +2535,390 @@ export function Registration() {
                                                         </p>
                                                     </div>
                                                 )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Allotment Details - for SAN only */}
+                                    {selectedRegistration.formType === 'SAN' && (
+                                        <div className="space-y-2 pt-2 border-t">
+                                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                                </svg>
+                                                Allotment Details
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                                {/* Bus Number */}
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Bus Number</Label>
+                                                    {isEditing ? (
+                                                        <Input 
+                                                            name="busNo" 
+                                                            value={editForm?.busNo || ''} 
+                                                            onChange={handleEditChange}
+                                                            placeholder="Enter bus number"
+                                                            maxLength={100}
+                                                            className="w-full"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-base font-medium text-gray-900">
+                                                            {selectedRegistration.busNo || 'Not Assigned'}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Tent Number */}
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Tent Number</Label>
+                                                    {isEditing ? (
+                                                        <Input 
+                                                            name="tentNo" 
+                                                            value={editForm?.tentNo || ''} 
+                                                            onChange={handleEditChange}
+                                                            placeholder="Enter tent number"
+                                                            maxLength={100}
+                                                            className="w-full"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-base font-medium text-gray-900">
+                                                            {selectedRegistration.tentNo || 'Not Assigned'}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Silder/Jirawala Room Number */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Silder/Jirawala Room Number</Label>
+                                                    {isEditing ? (
+                                                        <Input 
+                                                            name="roomNo" 
+                                                            value={editForm?.roomNo || ''} 
+                                                            onChange={handleEditChange}
+                                                            placeholder="Enter room number"
+                                                            maxLength={100}
+                                                            className="w-full"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-base font-medium text-gray-900">
+                                                            {selectedRegistration.roomNo || 'Not Assigned'}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Dharamshala Allotments Table */}
+                                                <div className="col-span-2 space-y-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Dharamshala Allotments</Label>
+                                                    <table className="w-full border-collapse border border-gray-300">
+                                                        <thead>
+                                                            <tr className="bg-gray-50">
+                                                                <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Place</th>
+                                                                <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Block / Room Number</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {/* Nakoda Dharamshala */}
+                                                            <tr>
+                                                                <td className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">Nakoda</td>
+                                                                <td className="border border-gray-300 px-4 py-2">
+                                                                    {isEditing ? (
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <Input 
+                                                                                name="nakodaBlock" 
+                                                                                value={editForm?.nakodaBlock || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Block"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                            <Input 
+                                                                                name="nakodaRoom" 
+                                                                                value={editForm?.nakodaRoom || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Room"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-sm text-gray-900">
+                                                                            {selectedRegistration.nakodaBlock && selectedRegistration.nakodaRoom
+                                                                                ? `Block ${selectedRegistration.nakodaBlock}, Room ${selectedRegistration.nakodaRoom}`
+                                                                                : selectedRegistration.nakodaBlock
+                                                                                ? `Block ${selectedRegistration.nakodaBlock}`
+                                                                                : selectedRegistration.nakodaRoom
+                                                                                ? `Room ${selectedRegistration.nakodaRoom}`
+                                                                                : 'Not Assigned'}
+                                                                        </p>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+
+                                                            {/* Taranga Dharamshala */}
+                                                            <tr>
+                                                                <td className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">Taranga</td>
+                                                                <td className="border border-gray-300 px-4 py-2">
+                                                                    {isEditing ? (
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <Input 
+                                                                                name="tarangaBlock" 
+                                                                                value={editForm?.tarangaBlock || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Block"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                            <Input 
+                                                                                name="tarangaRoom" 
+                                                                                value={editForm?.tarangaRoom || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Room"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-sm text-gray-900">
+                                                                            {selectedRegistration.tarangaBlock && selectedRegistration.tarangaRoom
+                                                                                ? `Block ${selectedRegistration.tarangaBlock}, Room ${selectedRegistration.tarangaRoom}`
+                                                                                : selectedRegistration.tarangaBlock
+                                                                                ? `Block ${selectedRegistration.tarangaBlock}`
+                                                                                : selectedRegistration.tarangaRoom
+                                                                                ? `Room ${selectedRegistration.tarangaRoom}`
+                                                                                : 'Not Assigned'}
+                                                                        </p>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+
+                                                            {/* Sankeshwar Dharamshala */}
+                                                            <tr>
+                                                                <td className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">Sankeshwar</td>
+                                                                <td className="border border-gray-300 px-4 py-2">
+                                                                    {isEditing ? (
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <Input 
+                                                                                name="sankeshwarBlock" 
+                                                                                value={editForm?.sankeshwarBlock || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Block"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                            <Input 
+                                                                                name="sankeshwarRoom" 
+                                                                                value={editForm?.sankeshwarRoom || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Room"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-sm text-gray-900">
+                                                                            {selectedRegistration.sankeshwarBlock && selectedRegistration.sankeshwarRoom
+                                                                                ? `Block ${selectedRegistration.sankeshwarBlock}, Room ${selectedRegistration.sankeshwarRoom}`
+                                                                                : selectedRegistration.sankeshwarBlock
+                                                                                ? `Block ${selectedRegistration.sankeshwarBlock}`
+                                                                                : selectedRegistration.sankeshwarRoom
+                                                                                ? `Room ${selectedRegistration.sankeshwarRoom}`
+                                                                                : 'Not Assigned'}
+                                                                        </p>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+
+                                                            {/* Girnar Dharamshala */}
+                                                            <tr>
+                                                                <td className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">Girnar</td>
+                                                                <td className="border border-gray-300 px-4 py-2">
+                                                                    {isEditing ? (
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <Input 
+                                                                                name="girnarBlock" 
+                                                                                value={editForm?.girnarBlock || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Block"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                            <Input 
+                                                                                name="girnarRoom" 
+                                                                                value={editForm?.girnarRoom || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Room"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-sm text-gray-900">
+                                                                            {selectedRegistration.girnarBlock && selectedRegistration.girnarRoom
+                                                                                ? `Block ${selectedRegistration.girnarBlock}, Room ${selectedRegistration.girnarRoom}`
+                                                                                : selectedRegistration.girnarBlock
+                                                                                ? `Block ${selectedRegistration.girnarBlock}`
+                                                                                : selectedRegistration.girnarRoom
+                                                                                ? `Room ${selectedRegistration.girnarRoom}`
+                                                                                : 'Not Assigned'}
+                                                                        </p>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+
+                                                            {/* Palitana Dharamshala */}
+                                                            <tr>
+                                                                <td className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">Palitana</td>
+                                                                <td className="border border-gray-300 px-4 py-2">
+                                                                    {isEditing ? (
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <Input 
+                                                                                name="palitanaBlock" 
+                                                                                value={editForm?.palitanaBlock || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Block"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                            <Input 
+                                                                                name="palitanaRoom" 
+                                                                                value={editForm?.palitanaRoom || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Room"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-sm text-gray-900">
+                                                                            {selectedRegistration.palitanaBlock && selectedRegistration.palitanaRoom
+                                                                                ? `Block ${selectedRegistration.palitanaBlock}, Room ${selectedRegistration.palitanaRoom}`
+                                                                                : selectedRegistration.palitanaBlock
+                                                                                ? `Block ${selectedRegistration.palitanaBlock}`
+                                                                                : selectedRegistration.palitanaRoom
+                                                                                ? `Room ${selectedRegistration.palitanaRoom}`
+                                                                                : 'Not Assigned'}
+                                                                        </p>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Allotment Details - for CHA only */}
+                                    {selectedRegistration.formType === 'CHA' && (
+                                        <div className="space-y-2 pt-2 border-t">
+                                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                                </svg>
+                                                Allotment Details
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                                {/* Tent Number */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Tent Number</Label>
+                                                    {isEditing ? (
+                                                        <Input 
+                                                            name="tentNo" 
+                                                            value={editForm?.tentNo || ''} 
+                                                            onChange={handleEditChange}
+                                                            placeholder="Enter tent number"
+                                                            maxLength={100}
+                                                            className="w-full"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-base font-medium text-gray-900">
+                                                            {selectedRegistration.tentNo || 'Not Assigned'}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Dharamshala Allotments Table */}
+                                                <div className="col-span-2 space-y-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Dharamshala Allotments</Label>
+                                                    <table className="w-full border-collapse border border-gray-300">
+                                                        <thead>
+                                                            <tr className="bg-gray-50">
+                                                                <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Place</th>
+                                                                <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Block / Room Number</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {/* Palitana Dharamshala */}
+                                                            <tr>
+                                                                <td className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">Palitana</td>
+                                                                <td className="border border-gray-300 px-4 py-2">
+                                                                    {isEditing ? (
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <Input 
+                                                                                name="palitanaBlock" 
+                                                                                value={editForm?.palitanaBlock || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Block"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                            <Input 
+                                                                                name="palitanaRoom" 
+                                                                                value={editForm?.palitanaRoom || ''} 
+                                                                                onChange={handleEditChange}
+                                                                                placeholder="Room"
+                                                                                maxLength={100}
+                                                                                className="text-sm"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-sm text-gray-900">
+                                                                            {selectedRegistration.palitanaBlock && selectedRegistration.palitanaRoom
+                                                                                ? `Block ${selectedRegistration.palitanaBlock}, Room ${selectedRegistration.palitanaRoom}`
+                                                                                : selectedRegistration.palitanaBlock
+                                                                                ? `Block ${selectedRegistration.palitanaBlock}`
+                                                                                : selectedRegistration.palitanaRoom
+                                                                                ? `Room ${selectedRegistration.palitanaRoom}`
+                                                                                : 'Not Assigned'}
+                                                                        </p>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Allotment Details - for NAV only */}
+                                    {selectedRegistration.formType === 'NAV' && (
+                                        <div className="space-y-2 pt-2 border-t">
+                                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                                </svg>
+                                                Allotment Details
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                                {/* Navanu Room */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label className="text-sm font-medium text-gray-500">Navanu Room</Label>
+                                                    {isEditing ? (
+                                                        <Input 
+                                                            name="navanuRoom" 
+                                                            value={editForm?.navanuRoom || ''} 
+                                                            onChange={handleEditChange}
+                                                            placeholder="Enter navanu room number"
+                                                            maxLength={100}
+                                                            className="w-full"
+                                                        />
+                                                    ) : (
+                                                        <p className="text-base font-medium text-gray-900">
+                                                            {selectedRegistration.navanuRoom || 'Not Assigned'}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}

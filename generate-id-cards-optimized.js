@@ -157,6 +157,7 @@ async function generateFrontCard(user, template) {
         }
       } catch (err) {
         // Skip photo if it fails to load
+        console.log(err);
       }
     }
     
