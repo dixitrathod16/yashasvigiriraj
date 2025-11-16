@@ -7,8 +7,21 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
  * This generates a test card with grid lines and position markers
  */
 
-const TEMPLATE_PATH = './idFrontTemplate.png'; // Update with your template path
+const TEMPLATE_PATH = './idTemplates/fullSanghFrontTemplate.jpg'; // Update with your template path
 const OUTPUT_PATH = './test-id-card.png';
+
+// Position configuration (must match generate-single-id.js)
+const POSITIONS = {
+  userPhoto: { x: 395, y: 652, width: 470, height: 560 },
+  qrCode: { x: 85, y: 575, size: 200 },
+  regNumber: { x: 640, y: 1330 },
+  name: { x: 310, y: 1470 },
+  age: { x: 1130, y: 1470 },
+  gender: { x: 310, y: 1580 },
+  phone: { x: 870, y: 1580 },
+  busNumber: { x: 440, y: 1725 },
+  tentNumber: { x: 1040, y: 1725 }
+};
 
 async function generateTestCard() {
   try {
@@ -55,59 +68,65 @@ async function generateTestCard() {
     }
     
     // Draw sample rectangles for photo and QR code positions
-    // Photo area (adjust these coordinates)
+    // Photo area
+    const photoPos = POSITIONS.userPhoto;
     ctx.strokeStyle = 'blue';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(200, 320, 230, 280);
+    ctx.lineWidth = 5;
+    ctx.strokeRect(photoPos.x, photoPos.y, photoPos.width, photoPos.height);
     ctx.fillStyle = 'blue';
-    ctx.font = 'bold 16px Arial';
-    ctx.fillText('PHOTO AREA', 250, 310);
-    ctx.fillText('(200, 320, 230x280)', 220, 615);
+    ctx.font = 'bold 30px Arial';
+    ctx.fillText('PHOTO AREA', photoPos.x + 100, photoPos.y - 20);
+    ctx.fillText(`(${photoPos.x}, ${photoPos.y}, ${photoPos.width}x${photoPos.height})`, 
+                 photoPos.x + 50, photoPos.y + photoPos.height + 40);
     
-    // QR code area (adjust these coordinates)
+    // QR code area
+    const qrPos = POSITIONS.qrCode;
     ctx.strokeStyle = 'green';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(45, 290, 140, 140);
+    ctx.lineWidth = 5;
+    ctx.strokeRect(qrPos.x, qrPos.y, qrPos.size, qrPos.size);
     ctx.fillStyle = 'green';
-    ctx.font = 'bold 16px Arial';
-    ctx.fillText('QR CODE', 75, 280);
-    ctx.fillText('(45, 290, 140x140)', 50, 445);
+    ctx.font = 'bold 30px Arial';
+    ctx.fillText('QR CODE', qrPos.x + 20, qrPos.y - 20);
+    ctx.fillText(`(${qrPos.x}, ${qrPos.y}, ${qrPos.size}x${qrPos.size})`, 
+                 qrPos.x - 50, qrPos.y + qrPos.size + 40);
     
     // Draw sample text positions
     const textPositions = [
-      { label: 'Reg No.', x: 315, y: 660, color: '#E91E63' },
-      { label: 'Name', x: 200, y: 730, color: '#E91E63' },
-      { label: 'Age', x: 570, y: 730, color: '#E91E63' },
-      { label: 'Gender', x: 200, y: 785, color: '#E91E63' },
-      { label: 'Phone', x: 520, y: 785, color: '#E91E63' },
-      { label: 'Bus No.', x: 150, y: 855, color: '#E91E63' },
-      { label: 'Tent No.', x: 480, y: 855, color: '#E91E63' }
+      { label: 'Reg No.', pos: POSITIONS.regNumber, align: 'center', color: '#E91E63' },
+      { label: 'Name', pos: POSITIONS.name, align: 'left', color: '#E91E63' },
+      { label: 'Age', pos: POSITIONS.age, align: 'left', color: '#E91E63' },
+      { label: 'Gender', pos: POSITIONS.gender, align: 'left', color: '#E91E63' },
+      { label: 'Phone', pos: POSITIONS.phone, align: 'left', color: '#E91E63' },
+      { label: 'Bus No.', pos: POSITIONS.busNumber, align: 'center', color: '#E91E63' },
+      { label: 'Tent No.', pos: POSITIONS.tentNumber, align: 'center', color: '#E91E63' }
     ];
     
-    textPositions.forEach(pos => {
+    textPositions.forEach(item => {
+      const { x, y } = item.pos;
+      
       // Draw crosshair
       ctx.strokeStyle = 'orange';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(pos.x - 10, pos.y);
-      ctx.lineTo(pos.x + 10, pos.y);
+      ctx.moveTo(x - 20, y);
+      ctx.lineTo(x + 20, y);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y - 10);
-      ctx.lineTo(pos.x, pos.y + 10);
+      ctx.moveTo(x, y - 20);
+      ctx.lineTo(x, y + 20);
       ctx.stroke();
       
-      // Draw label
+      // Draw label above
       ctx.fillStyle = 'orange';
-      ctx.font = 'bold 14px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${pos.label} (${pos.x},${pos.y})`, pos.x, pos.y - 15);
-      
-      // Draw sample text
-      ctx.fillStyle = pos.color;
       ctx.font = 'bold 28px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(pos.label, pos.x, pos.y);
+      ctx.fillText(`${item.label} (${x},${y})`, x, y - 30);
+      
+      // Draw sample text with correct alignment
+      ctx.fillStyle = item.color;
+      ctx.font = 'bold 60px Arial';
+      ctx.textAlign = item.align;
+      ctx.fillText(item.label, x, y);
     });
     
     // Save test card

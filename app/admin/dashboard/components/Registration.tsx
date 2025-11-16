@@ -432,10 +432,12 @@ export function Registration() {
 
     // Get all filtered registrations (not just paginated ones)
     const allFilteredRegistrations = useMemo(() => {
-        return baseFilteredRegistrations.filter(reg => {
+        const res = baseFilteredRegistrations.filter(reg => {
             if (statusFilter !== 'ALL' && reg.status !== statusFilter) return false;
             return true;
         });
+        console.log(res);
+        return res;
     }, [baseFilteredRegistrations, statusFilter]);
 
     const selectAllFiltered = () => {

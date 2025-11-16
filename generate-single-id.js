@@ -10,44 +10,69 @@ const QRCode = require('qrcode');
  * Example: node generate-single-id.js NAV1302
  */
 
-// Configuration
-const FRONT_TEMPLATE = './idFrontTemplate.png';
-const BACK_TEMPLATE = './idBackTemplate.png';
-const DATA_FILE = './ApprovedRegistrations.json';
+const FRONT_TEMPLATE = './idTemplates/tag-01.jpg';
+const BACK_TEMPLATE = './idTemplates/tag-02.jpg';
+const DATA_FILE = './data-imports/fullSanghApprovedRegistrations.json';
 const FILES_DIR = './files';
-const OUTPUT_DIR = './test-output';
+const OUTPUT_DIR = './testOutput/full-sangh-id/tags';
 
 // Position configuration
 const POSITIONS = {
-  userPhoto: { x: 395, y: 652, width: 470, height: 560 },
-  qrCode: { x: 85, y: 575, size: 200 },
+  userPhoto: { x: 230, y: 403, width: 250, height: 250 },
+  qrCode: { x: 68, y: 617, size: 102 },
   regNumber: { 
-    x: 640, y: 1330,
-    // box: { x: 450, y: 1280, width: 380, height: 80 } // Box around reg number
+    x: 360, y: 705,
   },
   name: { 
-    x: 310, y: 1470,
-    // box: { x: 50, y: 1360, width: 500, height: 60 }
+    x: 180, y: 765,
   },
   age: { 
-    x: 1130, y: 1470,
-    // box: { x: 900, y: 1360, width: 200, height: 60 }
+    x: 620, y: 765,
   },
   gender: { 
-    x: 310, y: 1580,
-    // box: { x: 50, y: 1460, width: 300, height: 60 }
+    x: 180, y: 825,
   },
   phone: { 
-    x: 870, y: 1580,
-    // box: { x: 700, y: 1460, width: 400, height: 60 }
+    x: 475, y: 825,
   },
   busNumber: { 
-    x: 440, y: 1725,
-    // box: { x: 180, y: 1610, width: 200, height: 80 }
+    x: 250, y: 900,
   },
   tentNumber: { 
-    x: 1040, y: 1725,
-    // box: { x: 900, y: 1610, width: 200, height: 80 }
+    x: 565, y: 900,
+  },
+  backRegNumber: {
+    x: 530, y: 235,
+  },
+  nakodaBlock: {
+    x: 275, y: 400,
+  },
+  nakodaRoom: {
+    x: 455, y: 400,
+  },
+  tarangaBlock: {
+    x: 275, y: 455,
+  },
+  tarangaRoom: {
+    x: 455, y: 455,
+  },
+  sankeshwarBlock: {
+    x: 275, y: 505,
+  },
+  sankeshwarRoom: {
+    x: 455, y: 505,
+  },
+  girnarBlock: {
+    x: 275, y: 560,
+  },
+  girnarRoom: {
+    x: 455, y: 560,
+  },
+  palitanaBlock: {
+    x: 275, y: 615,
+  },
+  palitanaRoom: {
+    x: 455, y: 615,
   }
 };
 
@@ -85,12 +110,33 @@ console.log(`  Gender: ${user.gender}`);
 
 // Helper function to convert name to title case
 function toTitleCase(str) {
+  str = str.toString();
   if (!str) return '';
   return str
     .toLowerCase()
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+// Helper function to trim name to max 23 characters by removing words from the end
+function trimNameToLength(name, maxLength = 23) {
+  if (!name || name.length <= maxLength) return name;
+  
+  const words = name.split(' ');
+  let result = words[0]; // Always keep at least the first word
+  
+  // Add words one by one until we exceed the limit
+  for (let i = 1; i < words.length; i++) {
+    const testName = result + ' ' + words[i];
+    if (testName.length <= maxLength) {
+      result = testName;
+    } else {
+      break; // Stop adding words once we exceed the limit
+    }
+  }
+  
+  return result;
 }
 
 // Helper function to get user photo path
@@ -185,13 +231,14 @@ async function generateFrontCard(user, templatePath) {
     
     // Registration Number (centered)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 65px Arial';
+    ctx.font = 'bold 35px Arial';
     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
     
     // Name and Gender (left-aligned for consistency)
     ctx.textAlign = 'left';
-    ctx.font = 'bold 60px Arial';
-    ctx.fillText(toTitleCase(user.fullName) || '', POSITIONS.name.x, POSITIONS.name.y);
+    ctx.font = 'bold 30px Arial';
+    const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
+    ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
     
     const genderText = user.gender === 'M' ? 'Male' : user.gender === 'F' ? 'Female' : user.gender;
     ctx.fillText(genderText, POSITIONS.gender.x, POSITIONS.gender.y);
@@ -202,9 +249,9 @@ async function generateFrontCard(user, templatePath) {
     
     // Bus and Tent numbers (centered in their boxes)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 60px Arial';
-    ctx.fillText(user.busNumber || '12', POSITIONS.busNumber.x, POSITIONS.busNumber.y);
-    ctx.fillText(user.tentNumber || '31', POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
+    ctx.font = 'bold 30px Arial';
+    ctx.fillText(user.busNo || '12', POSITIONS.busNumber.x, POSITIONS.busNumber.y);
+    ctx.fillText(user.tentNo || '31', POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
     
     console.log(`  ✓ Text and icons rendered`);
     
@@ -223,6 +270,30 @@ async function generateBackCard(user, templatePath) {
     const ctx = canvas.getContext('2d');
     
     ctx.drawImage(template, 0, 0);
+
+    ctx.fillStyle = '#E91E63';
+    
+    // Registration Number (centered)
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 30px Arial';
+    ctx.fillText(user.id, POSITIONS.backRegNumber.x, POSITIONS.backRegNumber.y);
+
+    // Nakoda Block
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 18px Arial';
+
+
+    ctx.fillStyle = '#E91E63';
+    ctx.fillText(String(user.nakodaBlock).trim() || '', POSITIONS.nakodaBlock.x, POSITIONS.nakodaBlock.y);
+    ctx.fillText(String(user.nakodaRoom).trim() || '', POSITIONS.nakodaRoom.x, POSITIONS.nakodaRoom.y);
+    ctx.fillText(String(user.tarangaBlock).trim() || '', POSITIONS.tarangaBlock.x, POSITIONS.tarangaBlock.y);
+    ctx.fillText(String(user.tarangaRoom).trim() || '', POSITIONS.tarangaRoom.x, POSITIONS.tarangaRoom.y);
+    ctx.fillText(String(user.sankeshwarBlock).trim() || '', POSITIONS.sankeshwarBlock.x, POSITIONS.sankeshwarBlock.y);
+    ctx.fillText(String(user.sankeshwarRoom).trim() || '', POSITIONS.sankeshwarRoom.x, POSITIONS.sankeshwarRoom.y);
+    ctx.fillText(String(user.girnarBlock).trim() || '', POSITIONS.girnarBlock.x, POSITIONS.girnarBlock.y);
+    ctx.fillText(String(user.girnarRoom).trim() || '', POSITIONS.girnarRoom.x, POSITIONS.girnarRoom.y);
+    ctx.fillText(String(user.palitanaBlock).trim() || '', POSITIONS.palitanaBlock.x, POSITIONS.palitanaBlock.y);
+    ctx.fillText(String(user.palitanaRoom).trim() || '', POSITIONS.palitanaRoom.x, POSITIONS.palitanaRoom.y);
     
     return canvas.toBuffer('image/png');
   } catch (err) {

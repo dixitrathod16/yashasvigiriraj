@@ -5,11 +5,12 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const QRCode = require('qrcode');
 
 // Configuration
-const FRONT_TEMPLATE = './idFrontTemplate.png';
-const BACK_TEMPLATE = './idBackTemplate.png';
-const DATA_FILE = './ApprovedRegistrations.json';
+// const FRONT_TEMPLATE = './idTemplates/fullSanghFrontTemplate.jpg';
+const FRONT_TEMPLATE = './idTemplates/tag-01.jpg';
+const BACK_TEMPLATE = './idTemplates/tag-02.jpg';
+const DATA_FILE = './data-imports/fullSanghApprovedRegistrations.json';
 const FILES_DIR = './files';
-const OUTPUT_DIR = './generated-id-cards';
+const OUTPUT_DIR = './full-sangh-id';
 
 // Performance settings
 const BATCH_SIZE = 10; // Process 10 users concurrently
@@ -22,16 +23,123 @@ const PHOTO_FIT_MODE = 'cover'; // Options: 'cover', 'contain', 'fill'
 // 'fill' - Stretch to fill (may distort, no cropping, no empty space)
 
 // Position configuration (matching single-id script)
+// const POSITIONS = {
+//   userPhoto: { x: 293, y: 390, width: 315, height: 315 },
+//   qrCode: { x: 85, y: 660, size: 130 },
+//   regNumber: { 
+//     x: 450, y: 770,
+//   },
+//   name: { 
+//     x: 235, y: 850,
+//   },
+//   age: { 
+//     x: 785, y: 850,
+//   },
+//   gender: { 
+//     x: 235, y: 925,
+//   },
+//   phone: { 
+//     x: 605, y: 925,
+//   },
+//   busNumber: { 
+//     x: 320, y: 1020,
+//   },
+//   tentNumber: { 
+//     x: 720, y: 1020,
+//   },
+//   backRegNumber: {
+//     x: 695, y: 130,
+//   },
+//   nakodaBlock: {
+//     x: 335, y: 360,
+//   },
+//   nakodaRoom: {
+//     x: 585, y: 360,
+//   },
+//   tarangaBlock: {
+//     x: 335, y: 440,
+//   },
+//   tarangaRoom: {
+//     x: 585, y: 440,
+//   },
+//   sankeshwarBlock: {
+//     x: 335, y: 520,
+//   },
+//   sankeshwarRoom: {
+//     x: 585, y: 520,
+//   },
+//   girnarBlock: {
+//     x: 335, y: 590,
+//   },
+//   girnarRoom: {
+//     x: 585, y: 590,
+//   },
+//   palitanaBlock: {
+//     x: 335, y: 670,
+//   },
+//   palitanaRoom: {
+//     x: 585, y: 670,
+//   }
+// };
+
+// Luggage Tags
 const POSITIONS = {
-  userPhoto: { x: 395, y: 652, width: 470, height: 560 },
-  qrCode: { x: 85, y: 575, size: 200 },
-  regNumber: { x: 640, y: 1330 },
-  name: { x: 310, y: 1470 },
-  age: { x: 1130, y: 1470 },
-  gender: { x: 310, y: 1580 },
-  phone: { x: 870, y: 1580 },
-  busNumber: { x: 440, y: 1725 },
-  tentNumber: { x: 1040, y: 1725 }
+  userPhoto: { x: 230, y: 403, width: 250, height: 250 },
+  qrCode: { x: 68, y: 617, size: 102 },
+  regNumber: { 
+    x: 360, y: 705,
+  },
+  name: { 
+    x: 180, y: 765,
+  },
+  age: { 
+    x: 620, y: 765,
+  },
+  gender: { 
+    x: 180, y: 825,
+  },
+  phone: { 
+    x: 475, y: 825,
+  },
+  busNumber: { 
+    x: 250, y: 900,
+  },
+  tentNumber: { 
+    x: 565, y: 900,
+  },
+  backRegNumber: {
+    x: 530, y: 235,
+  },
+  nakodaBlock: {
+    x: 275, y: 400,
+  },
+  nakodaRoom: {
+    x: 455, y: 400,
+  },
+  tarangaBlock: {
+    x: 275, y: 455,
+  },
+  tarangaRoom: {
+    x: 455, y: 455,
+  },
+  sankeshwarBlock: {
+    x: 275, y: 505,
+  },
+  sankeshwarRoom: {
+    x: 455, y: 505,
+  },
+  girnarBlock: {
+    x: 275, y: 560,
+  },
+  girnarRoom: {
+    x: 455, y: 560,
+  },
+  palitanaBlock: {
+    x: 275, y: 615,
+  },
+  palitanaRoom: {
+    x: 455, y: 615,
+  }
 };
 
 // Create output directory
@@ -48,12 +156,32 @@ let backTemplateCache = null;
 
 // Helper functions
 function toTitleCase(str) {
+  str = str.toString();
   if (!str) return '';
   return str
     .toLowerCase()
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+function trimNameToLength(name, maxLength = 23) {
+  if (!name || name.length <= maxLength) return name;
+  
+  const words = name.split(' ');
+  let result = words[0]; // Always keep at least the first word
+  
+  // Add words one by one until we exceed the limit
+  for (let i = 1; i < words.length; i++) {
+    const testName = result + ' ' + words[i];
+    if (testName.length <= maxLength) {
+      result = testName;
+    } else {
+      break; // Stop adding words once we exceed the limit
+    }
+  }
+  
+  return result;
 }
 
 function getUserPhotoPath(user) {
@@ -174,13 +302,14 @@ async function generateFrontCard(user, template) {
     
     // Registration Number (centered)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 65px Arial';
+    ctx.font = 'bold 35px Arial';
     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
     
     // Name and Gender (left-aligned for consistency)
     ctx.textAlign = 'left';
-    ctx.font = 'bold 60px Arial';
-    ctx.fillText(toTitleCase(user.fullName) || '', POSITIONS.name.x, POSITIONS.name.y);
+    ctx.font = 'bold 30px Arial';
+    const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
+    ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
     
     const genderText = user.gender === 'M' ? 'Male' : user.gender === 'F' ? 'Female' : user.gender;
     ctx.fillText(genderText, POSITIONS.gender.x, POSITIONS.gender.y);
@@ -191,9 +320,18 @@ async function generateFrontCard(user, template) {
     
     // Bus and Tent numbers (centered in their boxes)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 60px Arial';
-    ctx.fillText(user.busNumber || user.busTime || user.group || '12', POSITIONS.busNumber.x, POSITIONS.busNumber.y);
-    ctx.fillText(user.tentNumber || user.group || '31', POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
+    ctx.font = 'bold 30px Arial';
+
+    const busNo = user.busNo ? String(user.busNo).trim() : '';
+    const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
+
+    if (busNo) {
+      ctx.fillText(busNo, POSITIONS.busNumber.x, POSITIONS.busNumber.y);
+    }
+
+    if (tentNo) {
+      ctx.fillText(tentNo, POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
+    }
     
     return canvas.toBuffer('image/png');
   } catch (err) {
@@ -207,7 +345,72 @@ async function generateBackCard(user, template) {
   try {
     const canvas = createCanvas(template.width, template.height);
     const ctx = canvas.getContext('2d');
+    
     ctx.drawImage(template, 0, 0);
+
+    ctx.fillStyle = '#E91E63';
+    
+    // Registration Number (centered)
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 30px Arial';
+    ctx.fillText(user.id, POSITIONS.backRegNumber.x, POSITIONS.backRegNumber.y);
+
+    // Room allotment details
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 18px Arial';
+    ctx.fillStyle = '#E91E63';
+
+    const nakodaBlock = user.nakodaBlock ? String(user.nakodaBlock).trim() : '';
+    const nakodaRoom = user.nakodaRoom ? String(user.nakodaRoom).trim() : '';
+    const tarangaBlock = user.tarangaBlock ? String(user.tarangaBlock).trim() : '';
+    const tarangaRoom = user.tarangaRoom ? String(user.tarangaRoom).trim() : '';
+    const sankeshwarBlock = user.sankeshwarBlock ? String(user.sankeshwarBlock).trim() : '';
+    const sankeshwarRoom = user.sankeshwarRoom ? String(user.sankeshwarRoom).trim() : '';
+    const girnarBlock = user.girnarBlock ? String(user.girnarBlock).trim() : '';
+    const girnarRoom = user.girnarRoom ? String(user.girnarRoom).trim() : '';
+    const palitanaBlock = user.palitanaBlock ? String(user.palitanaBlock).trim() : '';
+    const palitanaRoom = user.palitanaRoom ? String(user.palitanaRoom).trim() : '';
+    
+    if (nakodaBlock) {
+      ctx.fillText(nakodaBlock, POSITIONS.nakodaBlock.x, POSITIONS.nakodaBlock.y);
+    }
+
+    if (nakodaRoom) {
+      ctx.fillText(nakodaRoom, POSITIONS.nakodaRoom.x, POSITIONS.nakodaRoom.y);
+    }
+
+    if (tarangaBlock) {
+      ctx.fillText(tarangaBlock, POSITIONS.tarangaBlock.x, POSITIONS.tarangaBlock.y);
+    }
+
+    if (tarangaRoom) {
+      ctx.fillText(tarangaRoom, POSITIONS.tarangaRoom.x, POSITIONS.tarangaRoom.y);
+    }
+
+    if (sankeshwarBlock) {
+      ctx.fillText(sankeshwarBlock, POSITIONS.sankeshwarBlock.x, POSITIONS.sankeshwarBlock.y);
+    }
+
+    if (sankeshwarRoom) {
+      ctx.fillText(sankeshwarRoom, POSITIONS.sankeshwarRoom.x, POSITIONS.sankeshwarRoom.y);
+    }
+
+    if (girnarBlock) {
+      ctx.fillText(girnarBlock, POSITIONS.girnarBlock.x, POSITIONS.girnarBlock.y);
+    }
+
+    if (girnarRoom) {
+      ctx.fillText(girnarRoom, POSITIONS.girnarRoom.x, POSITIONS.girnarRoom.y);
+    }
+
+    if (palitanaBlock) {
+      ctx.fillText(palitanaBlock, POSITIONS.palitanaBlock.x, POSITIONS.palitanaBlock.y);
+    }
+
+    if (palitanaRoom) {
+      ctx.fillText(palitanaRoom, POSITIONS.palitanaRoom.x, POSITIONS.palitanaRoom.y);
+    }
+
     return canvas.toBuffer('image/png');
   } catch (err) {
     console.error(`Error generating back card for ${user.id}:`, err.message);
@@ -215,27 +418,107 @@ async function generateBackCard(user, template) {
   }
 }
 
+// Generate front card without photo
+async function generateFrontCardNoPhoto(user, template) {
+  try {
+    const canvas = createCanvas(template.width, template.height);
+    const ctx = canvas.getContext('2d');
+    
+    ctx.drawImage(template, 0, 0);
+    
+    // Generate QR code
+    const qrBuffer = await generateQRCode(user.id);
+    if (qrBuffer) {
+      const qrImage = await loadImage(qrBuffer);
+      const { x, y, size } = POSITIONS.qrCode;
+      ctx.drawImage(qrImage, x, y, size, size);
+    }
+    
+    // Draw text (same as regular front card)
+    ctx.fillStyle = '#E91E63';
+    
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 45px Arial';
+    ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
+    
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 35px Arial';
+    const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
+    ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
+    
+    const genderText = user.gender === 'M' ? 'Male' : user.gender === 'F' ? 'Female' : user.gender;
+    ctx.fillText(genderText, POSITIONS.gender.x, POSITIONS.gender.y);
+    
+    ctx.fillText(user.age || '', POSITIONS.age.x, POSITIONS.age.y);
+    ctx.fillText(user.phoneNumber || '', POSITIONS.phone.x, POSITIONS.phone.y);
+    
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 35px Arial';
+
+    const busNo = user.busNo ? String(user.busNo).trim() : '';
+    const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
+
+    if (busNo) {
+      ctx.fillText(busNo, POSITIONS.busNumber.x, POSITIONS.busNumber.y);
+    }
+
+    if (tentNo) {
+      ctx.fillText(tentNo, POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
+    }
+    
+    return canvas.toBuffer('image/png');
+  } catch (err) {
+    console.error(`Error generating front card (no photo) for ${user.id}:`, err.message);
+    return null;
+  }
+}
+
 // Process a single user
 async function processUser(user, frontTemplate, backTemplate) {
   try {
-    const userDir = path.join(OUTPUT_DIR, user.id);
-    if (!fs.existsSync(userDir)) {
-      fs.mkdirSync(userDir, { recursive: true });
+    const frontDir = `${OUTPUT_DIR}/luggagetags-front`;
+    const backDir = `${OUTPUT_DIR}/luggagetags-back`;
+    const frontNoPhotoDir = `${OUTPUT_DIR}/front-no-photo`;
+    const originalImagesDir = `${OUTPUT_DIR}/originalImages`;
+    
+    if (!fs.existsSync(frontDir)) {
+      fs.mkdirSync(frontDir, { recursive: true });
+    }
+    if (!fs.existsSync(backDir)) {
+      fs.mkdirSync(backDir, { recursive: true });
+    }
+    if (!fs.existsSync(frontNoPhotoDir)) {
+      fs.mkdirSync(frontNoPhotoDir, { recursive: true });
+    }
+    if (!fs.existsSync(originalImagesDir)) {
+      fs.mkdirSync(originalImagesDir, { recursive: true });
     }
     
-    // Generate both cards
-    const [frontBuffer, backBuffer] = await Promise.all([
+    // Copy original user image
+    // const photoPath = getUserPhotoPath(user);
+    // if (photoPath && fs.existsSync(photoPath)) {
+    //   const ext = path.extname(photoPath);
+    //   const destPath = path.join(originalImagesDir, `${user.id}${ext}`);
+    //   fs.copyFileSync(photoPath, destPath);
+    // }
+    
+    // Generate all card versions
+    const [frontBuffer, backBuffer, frontNoPhotoBuffer] = await Promise.all([
       generateFrontCard(user, frontTemplate),
-      generateBackCard(user, backTemplate)
+      generateBackCard(user, backTemplate),
+      generateFrontCardNoPhoto(user, frontTemplate)
     ]);
     
-    // Save both cards
+    // Save all cards
     if (frontBuffer) {
-      fs.writeFileSync(path.join(userDir, `${user.id}_front.png`), frontBuffer);
+      fs.writeFileSync(path.join(frontDir, `${user.id}_front.png`), frontBuffer);
     }
     if (backBuffer) {
-      fs.writeFileSync(path.join(userDir, `${user.id}_back.png`), backBuffer);
+      fs.writeFileSync(path.join(backDir, `${user.id}_back.png`), backBuffer);
     }
+    // if (frontNoPhotoBuffer) {
+    //   fs.writeFileSync(path.join(frontNoPhotoDir, `${user.id}_front_no_photo.png`), frontNoPhotoBuffer);
+    // }
     
     return { success: true, id: user.id };
   } catch (err) {
