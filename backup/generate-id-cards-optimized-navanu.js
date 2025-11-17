@@ -4,144 +4,42 @@ const path = require('path');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const QRCode = require('qrcode');
 
-// Configuration
-// const FRONT_TEMPLATE = './idTemplates/fullSanghFrontTemplate.jpg';
-// const BACK_TEMPLATE = './idTemplates/fullSanghBackTemplate.jpg';
-const FRONT_TEMPLATE = './idTemplates/tag-01.jpg';
-const BACK_TEMPLATE = './idTemplates/tag-02.jpg';
-const DATA_FILE = './data-imports/fullSanghApprovedRegistrations.json';
+const FRONT_TEMPLATE = 'idTemplates/navanuFrontTemplate.jpg';
+const DATA_FILE = './data-imports/navanuApprovedRegistrations.json';
 const FILES_DIR = './files';
-const OUTPUT_DIR = './full-sangh-id';
+const OUTPUT_DIR = './navanu-id';
 
 // Performance settings
 const BATCH_SIZE = 10; // Process 10 users concurrently
 const ENABLE_LOGGING = true; // Set to false for faster processing
 
 // Photo fitting modes
-const PHOTO_FIT_MODE = 'cover'; // Options: 'cover', 'contain', 'fill'
-// 'cover' - Fill entire area, crop if needed (no empty space, no distortion)
-// 'contain' - Fit entire photo, may have empty space (no cropping, no distortion)
-// 'fill' - Stretch to fill (may distort, no cropping, no empty space)
+const PHOTO_FIT_MODE = 'cover';
 
-// Position configuration (matching single-id script)
-// const POSITIONS = {
-//   userPhoto: { x: 293, y: 390, width: 315, height: 315 },
-//   qrCode: { x: 85, y: 660, size: 130 },
-//   regNumber: { 
-//     x: 450, y: 770,
-//   },
-//   name: { 
-//     x: 235, y: 850,
-//   },
-//   age: { 
-//     x: 785, y: 850,
-//   },
-//   gender: { 
-//     x: 235, y: 925,
-//   },
-//   phone: { 
-//     x: 605, y: 925,
-//   },
-//   busNumber: { 
-//     x: 320, y: 1020,
-//   },
-//   tentNumber: { 
-//     x: 720, y: 1020,
-//   },
-//   backRegNumber: {
-//     x: 695, y: 130,
-//   },
-//   nakodaBlock: {
-//     x: 335, y: 360,
-//   },
-//   nakodaRoom: {
-//     x: 585, y: 360,
-//   },
-//   tarangaBlock: {
-//     x: 335, y: 440,
-//   },
-//   tarangaRoom: {
-//     x: 585, y: 440,
-//   },
-//   sankeshwarBlock: {
-//     x: 335, y: 520,
-//   },
-//   sankeshwarRoom: {
-//     x: 585, y: 520,
-//   },
-//   girnarBlock: {
-//     x: 335, y: 590,
-//   },
-//   girnarRoom: {
-//     x: 585, y: 590,
-//   },
-//   palitanaBlock: {
-//     x: 335, y: 670,
-//   },
-//   palitanaRoom: {
-//     x: 585, y: 670,
-//   }
-// };
-
-// Luggage Tags
+// Position configuration ChariPalith
 const POSITIONS = {
-  userPhoto: { x: 230, y: 403, width: 250, height: 250 },
-  qrCode: { x: 68, y: 617, size: 102 },
+  userPhoto: { x: 293, y: 390, width: 315, height: 315 },
+  qrCode: { x: 85, y: 660, size: 130 },
   regNumber: { 
-    x: 360, y: 705,
+    x: 450, y: 770,
   },
   name: { 
-    x: 180, y: 765,
+    x: 235, y: 850,
   },
   age: { 
-    x: 620, y: 765,
+    x: 785, y: 850,
   },
   gender: { 
-    x: 180, y: 825,
+    x: 235, y: 925,
   },
   phone: { 
-    x: 475, y: 825,
+    x: 605, y: 925,
   },
-  busNumber: { 
-    x: 250, y: 900,
-  },
-  tentNumber: { 
-    x: 565, y: 900,
-  },
-  backRegNumber: {
-    x: 530, y: 235,
-  },
-  nakodaBlock: {
-    x: 275, y: 400,
-  },
-  nakodaRoom: {
-    x: 455, y: 400,
-  },
-  tarangaBlock: {
-    x: 275, y: 455,
-  },
-  tarangaRoom: {
-    x: 455, y: 455,
-  },
-  sankeshwarBlock: {
-    x: 275, y: 505,
-  },
-  sankeshwarRoom: {
-    x: 455, y: 505,
-  },
-  girnarBlock: {
-    x: 275, y: 560,
-  },
-  girnarRoom: {
-    x: 455, y: 560,
-  },
-  palitanaBlock: {
-    x: 275, y: 615,
-  },
-  palitanaRoom: {
-    x: 455, y: 615,
+  navanuRoom: {
+    x: 545, y: 1020,
   }
 };
+
 // Create output directory
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -152,7 +50,6 @@ const users = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
 
 // Cache for loaded templates (load once, reuse many times)
 let frontTemplateCache = null;
-let backTemplateCache = null;
 
 // Helper functions
 function toTitleCase(str) {
@@ -185,18 +82,6 @@ function trimNameToLength(name, maxLength = 23) {
 }
 
 function getUserPhotoPath(user) {
-  // First try the Original Photos directory with user ID
-  const originalPhotosDir = './Original Photos';
-  const extensions = ['.png', '.jpg', '.jpeg', '.webp'];
-  
-  for (const ext of extensions) {
-    const photoPath = path.join(originalPhotosDir, `${user.id}${ext}`);
-    if (fs.existsSync(photoPath)) {
-      return photoPath;
-    }
-  }
-  
-  // Fallback to old method if not found in Original Photos
   if (user.idPhotoKey && user.idPhotoKey.trim() !== '') {
     return path.join(FILES_DIR, user.idPhotoKey);
   }
@@ -223,9 +108,6 @@ async function generateQRCode(text) {
 async function loadTemplates() {
   if (!frontTemplateCache) {
     frontTemplateCache = await loadImage(FRONT_TEMPLATE);
-  }
-  if (!backTemplateCache) {
-    backTemplateCache = await loadImage(BACK_TEMPLATE);
   }
 }
 
@@ -314,14 +196,12 @@ async function generateFrontCard(user, template) {
     
     // Registration Number (centered)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 35px Arial';
-    //  ctx.font = 'bold 45px Arial';
+    ctx.font = 'bold 45px Arial';
     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
     
     // Name and Gender (left-aligned for consistency)
     ctx.textAlign = 'left';
-    ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
+    ctx.font = 'bold 35px Arial';
     const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
     ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
     
@@ -334,103 +214,17 @@ async function generateFrontCard(user, template) {
     
     // Bus and Tent numbers (centered in their boxes)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
+    ctx.font = 'bold 35px Arial';
 
-    const busNo = user.busNo ? String(user.busNo).trim() : '';
-    const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
+    const navanuRoom = user.navanuRoom ? String(user.navanuRoom).trim() : '';
 
-    if (busNo) {
-      ctx.fillText(busNo, POSITIONS.busNumber.x, POSITIONS.busNumber.y);
-    }
-
-    if (tentNo) {
-      ctx.fillText(tentNo, POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
+    if (navanuRoom) {
+      ctx.fillText(navanuRoom, POSITIONS.navanuRoom.x, POSITIONS.navanuRoom.y);
     }
     
     return canvas.toBuffer('image/png');
   } catch (err) {
     console.error(`Error generating front card for ${user.id}:`, err.message);
-    return null;
-  }
-}
-
-// Generate back card (optimized)
-async function generateBackCard(user, template) {
-  try {
-    const canvas = createCanvas(template.width, template.height);
-    const ctx = canvas.getContext('2d');
-    
-    ctx.drawImage(template, 0, 0);
-
-    ctx.fillStyle = '#E91E63';
-    
-    // Registration Number (centered)
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
-    ctx.fillText(user.id, POSITIONS.backRegNumber.x, POSITIONS.backRegNumber.y);
-
-    // Room allotment details
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 18px Arial';
-    // ctx.font = 'bold 25px Arial';
-    ctx.fillStyle = '#E91E63';
-
-    const nakodaBlock = user.nakodaBlock ? String(user.nakodaBlock).trim() : '';
-    const nakodaRoom = user.nakodaRoom ? String(user.nakodaRoom).trim() : '';
-    const tarangaBlock = user.tarangaBlock ? String(user.tarangaBlock).trim() : '';
-    const tarangaRoom = user.tarangaRoom ? String(user.tarangaRoom).trim() : '';
-    const sankeshwarBlock = user.sankeshwarBlock ? String(user.sankeshwarBlock).trim() : '';
-    const sankeshwarRoom = user.sankeshwarRoom ? String(user.sankeshwarRoom).trim() : '';
-    const girnarBlock = user.girnarBlock ? String(user.girnarBlock).trim() : '';
-    const girnarRoom = user.girnarRoom ? String(user.girnarRoom).trim() : '';
-    const palitanaBlock = user.palitanaBlock ? String(user.palitanaBlock).trim() : '';
-    const palitanaRoom = user.palitanaRoom ? String(user.palitanaRoom).trim() : '';
-    
-    if (nakodaBlock) {
-      ctx.fillText(nakodaBlock, POSITIONS.nakodaBlock.x, POSITIONS.nakodaBlock.y);
-    }
-
-    if (nakodaRoom) {
-      ctx.fillText(nakodaRoom, POSITIONS.nakodaRoom.x, POSITIONS.nakodaRoom.y);
-    }
-
-    if (tarangaBlock) {
-      ctx.fillText(tarangaBlock, POSITIONS.tarangaBlock.x, POSITIONS.tarangaBlock.y);
-    }
-
-    if (tarangaRoom) {
-      ctx.fillText(tarangaRoom, POSITIONS.tarangaRoom.x, POSITIONS.tarangaRoom.y);
-    }
-
-    if (sankeshwarBlock) {
-      ctx.fillText(sankeshwarBlock, POSITIONS.sankeshwarBlock.x, POSITIONS.sankeshwarBlock.y);
-    }
-
-    if (sankeshwarRoom) {
-      ctx.fillText(sankeshwarRoom, POSITIONS.sankeshwarRoom.x, POSITIONS.sankeshwarRoom.y);
-    }
-
-    if (girnarBlock) {
-      ctx.fillText(girnarBlock, POSITIONS.girnarBlock.x, POSITIONS.girnarBlock.y);
-    }
-
-    if (girnarRoom) {
-      ctx.fillText(girnarRoom, POSITIONS.girnarRoom.x, POSITIONS.girnarRoom.y);
-    }
-
-    if (palitanaBlock) {
-      ctx.fillText(palitanaBlock, POSITIONS.palitanaBlock.x, POSITIONS.palitanaBlock.y);
-    }
-
-    if (palitanaRoom) {
-      ctx.fillText(palitanaRoom, POSITIONS.palitanaRoom.x, POSITIONS.palitanaRoom.y);
-    }
-
-    return canvas.toBuffer('image/png');
-  } catch (err) {
-    console.error(`Error generating back card for ${user.id}:`, err.message);
     return null;
   }
 }
@@ -472,15 +266,10 @@ async function generateBackCard(user, template) {
 //     ctx.textAlign = 'center';
 //     ctx.font = 'bold 35px Arial';
 
-//     const busNo = user.busNo ? String(user.busNo).trim() : '';
-//     const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
+//     const navanuRoom = user.navanuRoom ? String(user.navanuRoom).trim() : '';
 
-//     if (busNo) {
-//       ctx.fillText(busNo, POSITIONS.busNumber.x, POSITIONS.busNumber.y);
-//     }
-
-//     if (tentNo) {
-//       ctx.fillText(tentNo, POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
+//     if (navanuRoom) {
+//       ctx.fillText(navanuRoom, POSITIONS.navanuRoom.x, POSITIONS.navanuRoom.y);
 //     }
     
 //     return canvas.toBuffer('image/png');
@@ -491,32 +280,27 @@ async function generateBackCard(user, template) {
 // }
 
 // Process a single user
-async function processUser(user, frontTemplate, backTemplate) {
+async function processUser(user, frontTemplate) {
   try {
-    const frontDir = `${OUTPUT_DIR}/luggagetags-front`;
-    const backDir = `${OUTPUT_DIR}/luggagetags-back`;
-    // const frontDir = `${OUTPUT_DIR}/id-front`;
-    // const backDir = `${OUTPUT_DIR}/id-back`;
+    const frontDir = `${OUTPUT_DIR}/front`;
+    const frontNoPhotoDir = `${OUTPUT_DIR}/front-no-photo`;
     
     if (!fs.existsSync(frontDir)) {
       fs.mkdirSync(frontDir, { recursive: true });
     }
-    if (!fs.existsSync(backDir)) {
-      fs.mkdirSync(backDir, { recursive: true });
+    if (!fs.existsSync(frontNoPhotoDir)) {
+      fs.mkdirSync(frontNoPhotoDir, { recursive: true });
     }
-
-    // Generate all card versions
-    const [frontBuffer, backBuffer] = await Promise.all([
-      generateFrontCard(user, frontTemplate),
-      generateBackCard(user, backTemplate),
-    ]);
+    if (!fs.existsSync(originalImagesDir)) {
+      fs.mkdirSync(originalImagesDir, { recursive: true });
+    }
     
-    // Save all cards
+    // Generate both card versions
+    const frontBuffer = await generateFrontCard(user, frontTemplate);
+    
+    // Save both cards
     if (frontBuffer) {
       fs.writeFileSync(path.join(frontDir, `${user.id}_front.png`), frontBuffer);
-    }
-    if (backBuffer) {
-      fs.writeFileSync(path.join(backDir, `${user.id}_back.png`), backBuffer);
     }
     
     return { success: true, id: user.id };
@@ -526,9 +310,9 @@ async function processUser(user, frontTemplate, backTemplate) {
 }
 
 // Process users in batches
-async function processBatch(users, frontTemplate, backTemplate, batchNum, totalBatches) {
+async function processBatch(users, frontTemplate, batchNum, totalBatches) {
   const results = await Promise.all(
-    users.map(user => processUser(user, frontTemplate, backTemplate))
+    users.map(user => processUser(user, frontTemplate))
   );
   
   const successful = results.filter(r => r.success).length;
@@ -569,7 +353,6 @@ async function generateAllCards() {
     const batchResults = await processBatch(
       batches[i],
       frontTemplateCache,
-      backTemplateCache,
       i + 1,
       batches.length
     );

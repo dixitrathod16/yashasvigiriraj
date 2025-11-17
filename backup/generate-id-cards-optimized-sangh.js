@@ -6,7 +6,6 @@ const QRCode = require('qrcode');
 
 // Configuration
 // const FRONT_TEMPLATE = './idTemplates/fullSanghFrontTemplate.jpg';
-// const BACK_TEMPLATE = './idTemplates/fullSanghBackTemplate.jpg';
 const FRONT_TEMPLATE = './idTemplates/tag-01.jpg';
 const BACK_TEMPLATE = './idTemplates/tag-02.jpg';
 const DATA_FILE = './data-imports/fullSanghApprovedRegistrations.json';
@@ -185,18 +184,6 @@ function trimNameToLength(name, maxLength = 23) {
 }
 
 function getUserPhotoPath(user) {
-  // First try the Original Photos directory with user ID
-  const originalPhotosDir = './Original Photos';
-  const extensions = ['.png', '.jpg', '.jpeg', '.webp'];
-  
-  for (const ext of extensions) {
-    const photoPath = path.join(originalPhotosDir, `${user.id}${ext}`);
-    if (fs.existsSync(photoPath)) {
-      return photoPath;
-    }
-  }
-  
-  // Fallback to old method if not found in Original Photos
   if (user.idPhotoKey && user.idPhotoKey.trim() !== '') {
     return path.join(FILES_DIR, user.idPhotoKey);
   }
@@ -315,13 +302,11 @@ async function generateFrontCard(user, template) {
     // Registration Number (centered)
     ctx.textAlign = 'center';
     ctx.font = 'bold 35px Arial';
-    //  ctx.font = 'bold 45px Arial';
     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
     
     // Name and Gender (left-aligned for consistency)
     ctx.textAlign = 'left';
     ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
     const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
     ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
     
@@ -335,7 +320,6 @@ async function generateFrontCard(user, template) {
     // Bus and Tent numbers (centered in their boxes)
     ctx.textAlign = 'center';
     ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
 
     const busNo = user.busNo ? String(user.busNo).trim() : '';
     const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
@@ -368,13 +352,11 @@ async function generateBackCard(user, template) {
     // Registration Number (centered)
     ctx.textAlign = 'center';
     ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
     ctx.fillText(user.id, POSITIONS.backRegNumber.x, POSITIONS.backRegNumber.y);
 
     // Room allotment details
     ctx.textAlign = 'left';
     ctx.font = 'bold 18px Arial';
-    // ctx.font = 'bold 25px Arial';
     ctx.fillStyle = '#E91E63';
 
     const nakodaBlock = user.nakodaBlock ? String(user.nakodaBlock).trim() : '';
@@ -495,8 +477,6 @@ async function processUser(user, frontTemplate, backTemplate) {
   try {
     const frontDir = `${OUTPUT_DIR}/luggagetags-front`;
     const backDir = `${OUTPUT_DIR}/luggagetags-back`;
-    // const frontDir = `${OUTPUT_DIR}/id-front`;
-    // const backDir = `${OUTPUT_DIR}/id-back`;
     
     if (!fs.existsSync(frontDir)) {
       fs.mkdirSync(frontDir, { recursive: true });

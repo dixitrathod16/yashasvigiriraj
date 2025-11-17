@@ -130,6 +130,18 @@ function trimNameToLength(name, maxLength = 23) {
 }
 
 function getUserPhotoPath(user) {
+  // First try the Original Photos directory with user ID
+  const originalPhotosDir = './Original Photos';
+  const extensions = ['.png', '.jpg', '.jpeg', '.webp'];
+  
+  for (const ext of extensions) {
+    const photoPath = path.join(originalPhotosDir, `${user.id}${ext}`);
+    if (fs.existsSync(photoPath)) {
+      return photoPath;
+    }
+  }
+  
+  // Fallback to old method if not found in Original Photos
   if (user.idPhotoKey && user.idPhotoKey.trim() !== '') {
     return path.join(FILES_DIR, user.idPhotoKey);
   }
@@ -248,11 +260,13 @@ async function generateFrontCard(user, template) {
     // Registration Number (centered)
     ctx.textAlign = 'center';
     ctx.font = 'bold 35px Arial';
+    // ctx.font = 'bold 45px Arial';
     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
     
     // Name and Gender (left-aligned for consistency)
     ctx.textAlign = 'left';
     ctx.font = 'bold 30px Arial';
+    // ctx.font = 'bold 35px Arial';
     const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
     ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
     
@@ -266,6 +280,7 @@ async function generateFrontCard(user, template) {
     // Bus and Tent numbers (centered in their boxes)
     ctx.textAlign = 'center';
     ctx.font = 'bold 30px Arial';
+    // ctx.font = 'bold 35px Arial';
 
     const busNo = user.busNo ? String(user.busNo).trim() : '';
     const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
@@ -298,11 +313,13 @@ async function generateBackCard(user, template) {
     // Registration Number (centered)
     ctx.textAlign = 'center';
     ctx.font = 'bold 30px Arial';
+    // ctx.font = 'bold 35px Arial';
     ctx.fillText(user.id, POSITIONS.backRegNumber.x, POSITIONS.backRegNumber.y);
 
     // Room allotment details
     ctx.textAlign = 'left';
     ctx.font = 'bold 18px Arial';
+    // ctx.font = 'bold 25px Arial';
     ctx.fillStyle = '#E91E63';
 
     const palitanaBlock = user.palitanaBlock ? String(user.palitanaBlock).trim() : '';
@@ -324,67 +341,67 @@ async function generateBackCard(user, template) {
 }
 
 // Generate front card without photo
-async function generateFrontCardNoPhoto(user, template) {
-  try {
-    const canvas = createCanvas(template.width, template.height);
-    const ctx = canvas.getContext('2d');
+// async function generateFrontCardNoPhoto(user, template) {
+//   try {
+//     const canvas = createCanvas(template.width, template.height);
+//     const ctx = canvas.getContext('2d');
     
-    ctx.drawImage(template, 0, 0);
+//     ctx.drawImage(template, 0, 0);
     
-    // Generate QR code
-    const qrBuffer = await generateQRCode(user.id);
-    if (qrBuffer) {
-      const qrImage = await loadImage(qrBuffer);
-      const { x, y, size } = POSITIONS.qrCode;
-      ctx.drawImage(qrImage, x, y, size, size);
-    }
+//     // Generate QR code
+//     const qrBuffer = await generateQRCode(user.id);
+//     if (qrBuffer) {
+//       const qrImage = await loadImage(qrBuffer);
+//       const { x, y, size } = POSITIONS.qrCode;
+//       ctx.drawImage(qrImage, x, y, size, size);
+//     }
     
-    // Draw text (same as regular front card)
-    ctx.fillStyle = '#E91E63';
+//     // Draw text (same as regular front card)
+//     ctx.fillStyle = '#E91E63';
     
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 45px Arial';
-    ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
+//     ctx.textAlign = 'center';
+//     ctx.font = 'bold 45px Arial';
+//     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
     
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 35px Arial';
-    const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
-    ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
+//     ctx.textAlign = 'left';
+//     ctx.font = 'bold 35px Arial';
+//     const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
+//     ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
     
-    const genderText = user.gender === 'M' ? 'Male' : user.gender === 'F' ? 'Female' : user.gender;
-    ctx.fillText(genderText, POSITIONS.gender.x, POSITIONS.gender.y);
+//     const genderText = user.gender === 'M' ? 'Male' : user.gender === 'F' ? 'Female' : user.gender;
+//     ctx.fillText(genderText, POSITIONS.gender.x, POSITIONS.gender.y);
     
-    ctx.fillText(user.age || '', POSITIONS.age.x, POSITIONS.age.y);
-    ctx.fillText(user.phoneNumber || '', POSITIONS.phone.x, POSITIONS.phone.y);
+//     ctx.fillText(user.age || '', POSITIONS.age.x, POSITIONS.age.y);
+//     ctx.fillText(user.phoneNumber || '', POSITIONS.phone.x, POSITIONS.phone.y);
     
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 35px Arial';
+//     ctx.textAlign = 'center';
+//     ctx.font = 'bold 35px Arial';
 
-    const busNo = user.busNo ? String(user.busNo).trim() : '';
-    const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
+//     const busNo = user.busNo ? String(user.busNo).trim() : '';
+//     const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
 
-    if (busNo) {
-      ctx.fillText(busNo, POSITIONS.busNumber.x, POSITIONS.busNumber.y);
-    }
+//     if (busNo) {
+//       ctx.fillText(busNo, POSITIONS.busNumber.x, POSITIONS.busNumber.y);
+//     }
 
-    if (tentNo) {
-      ctx.fillText(tentNo, POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
-    }
+//     if (tentNo) {
+//       ctx.fillText(tentNo, POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
+//     }
     
-    return canvas.toBuffer('image/png');
-  } catch (err) {
-    console.error(`Error generating front card (no photo) for ${user.id}:`, err.message);
-    return null;
-  }
-}
+//     return canvas.toBuffer('image/png');
+//   } catch (err) {
+//     console.error(`Error generating front card (no photo) for ${user.id}:`, err.message);
+//     return null;
+//   }
+// }
 
 // Process a single user
 async function processUser(user, frontTemplate, backTemplate) {
   try {
     const frontDir = `${OUTPUT_DIR}/luggagetags-front`;
     const backDir = `${OUTPUT_DIR}/luggagetags-back`;
-    const frontNoPhotoDir = `${OUTPUT_DIR}/front-no-photo`;
-    const originalImagesDir = `${OUTPUT_DIR}/originalImages`;
+    // const frontDir = `${OUTPUT_DIR}/id-front`;
+    // const backDir = `${OUTPUT_DIR}/id-back`;
     
     if (!fs.existsSync(frontDir)) {
       fs.mkdirSync(frontDir, { recursive: true });
@@ -392,26 +409,11 @@ async function processUser(user, frontTemplate, backTemplate) {
     if (!fs.existsSync(backDir)) {
       fs.mkdirSync(backDir, { recursive: true });
     }
-    if (!fs.existsSync(frontNoPhotoDir)) {
-      fs.mkdirSync(frontNoPhotoDir, { recursive: true });
-    }
-    if (!fs.existsSync(originalImagesDir)) {
-      fs.mkdirSync(originalImagesDir, { recursive: true });
-    }
-    
-    // Copy original user image
-    // const photoPath = getUserPhotoPath(user);
-    // if (photoPath && fs.existsSync(photoPath)) {
-    //   const ext = path.extname(photoPath);
-    //   const destPath = path.join(originalImagesDir, `${user.id}${ext}`);
-    //   fs.copyFileSync(photoPath, destPath);
-    // }
-    
+
     // Generate all card versions
-    const [frontBuffer, backBuffer, frontNoPhotoBuffer] = await Promise.all([
+    const [frontBuffer, backBuffer] = await Promise.all([
       generateFrontCard(user, frontTemplate),
       generateBackCard(user, backTemplate),
-      generateFrontCardNoPhoto(user, frontTemplate)
     ]);
     
     // Save all cards
@@ -421,9 +423,6 @@ async function processUser(user, frontTemplate, backTemplate) {
     if (backBuffer) {
       fs.writeFileSync(path.join(backDir, `${user.id}_back.png`), backBuffer);
     }
-    // if (frontNoPhotoBuffer) {
-    //   fs.writeFileSync(path.join(frontNoPhotoDir, `${user.id}_front_no_photo.png`), frontNoPhotoBuffer);
-    // }
     
     return { success: true, id: user.id };
   } catch (err) {

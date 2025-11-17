@@ -4,14 +4,13 @@ const path = require('path');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const QRCode = require('qrcode');
 
-// Configuration
-// const FRONT_TEMPLATE = './idTemplates/fullSanghFrontTemplate.jpg';
-// const BACK_TEMPLATE = './idTemplates/fullSanghBackTemplate.jpg';
-const FRONT_TEMPLATE = './idTemplates/tag-01.jpg';
-const BACK_TEMPLATE = './idTemplates/tag-02.jpg';
-const DATA_FILE = './data-imports/fullSanghApprovedRegistrations.json';
+// const FRONT_TEMPLATE = 'idTemplates/chariPalithSanghFrontTemplate.jpg';
+// const BACK_TEMPLATE = 'idTemplates/chariPalithSanghBackTemplate.jpg';
+const FRONT_TEMPLATE = './idTemplates/2tag-01.jpg';
+const BACK_TEMPLATE = './idTemplates/2tag-02.jpg';
+const DATA_FILE = './data-imports/chariApprovedRegistrations.json';
 const FILES_DIR = './files';
-const OUTPUT_DIR = './full-sangh-id';
+const OUTPUT_DIR = './charipalith-id';
 
 // Performance settings
 const BATCH_SIZE = 10; // Process 10 users concurrently
@@ -23,7 +22,7 @@ const PHOTO_FIT_MODE = 'cover'; // Options: 'cover', 'contain', 'fill'
 // 'contain' - Fit entire photo, may have empty space (no cropping, no distortion)
 // 'fill' - Stretch to fill (may distort, no cropping, no empty space)
 
-// Position configuration (matching single-id script)
+// Position configuration ChariPalith
 // const POSITIONS = {
 //   userPhoto: { x: 293, y: 390, width: 315, height: 315 },
 //   qrCode: { x: 85, y: 660, size: 130 },
@@ -42,48 +41,21 @@ const PHOTO_FIT_MODE = 'cover'; // Options: 'cover', 'contain', 'fill'
 //   phone: { 
 //     x: 605, y: 925,
 //   },
-//   busNumber: { 
-//     x: 320, y: 1020,
-//   },
 //   tentNumber: { 
-//     x: 720, y: 1020,
+//     x: 520, y: 1020,
 //   },
 //   backRegNumber: {
 //     x: 695, y: 130,
 //   },
-//   nakodaBlock: {
+//   palitanaBlock: {
 //     x: 335, y: 360,
 //   },
-//   nakodaRoom: {
-//     x: 585, y: 360,
-//   },
-//   tarangaBlock: {
-//     x: 335, y: 440,
-//   },
-//   tarangaRoom: {
-//     x: 585, y: 440,
-//   },
-//   sankeshwarBlock: {
-//     x: 335, y: 520,
-//   },
-//   sankeshwarRoom: {
-//     x: 585, y: 520,
-//   },
-//   girnarBlock: {
-//     x: 335, y: 590,
-//   },
-//   girnarRoom: {
-//     x: 585, y: 590,
-//   },
-//   palitanaBlock: {
-//     x: 335, y: 670,
-//   },
 //   palitanaRoom: {
-//     x: 585, y: 670,
+//     x: 585, y: 360,
 //   }
 // };
 
-// Luggage Tags
+// Position configuration for Tags
 const POSITIONS = {
   userPhoto: { x: 230, y: 403, width: 250, height: 250 },
   qrCode: { x: 68, y: 617, size: 102 },
@@ -102,45 +74,18 @@ const POSITIONS = {
   phone: { 
     x: 475, y: 825,
   },
-  busNumber: { 
-    x: 250, y: 900,
-  },
   tentNumber: { 
-    x: 565, y: 900,
+    x: 415, y: 900,
   },
   backRegNumber: {
-    x: 530, y: 235,
-  },
-  nakodaBlock: {
-    x: 275, y: 400,
-  },
-  nakodaRoom: {
-    x: 455, y: 400,
-  },
-  tarangaBlock: {
-    x: 275, y: 455,
-  },
-  tarangaRoom: {
-    x: 455, y: 455,
-  },
-  sankeshwarBlock: {
-    x: 275, y: 505,
-  },
-  sankeshwarRoom: {
-    x: 455, y: 505,
-  },
-  girnarBlock: {
-    x: 275, y: 560,
-  },
-  girnarRoom: {
-    x: 455, y: 560,
+    x: 530, y: 180,
   },
   palitanaBlock: {
-    x: 275, y: 615,
+    x: 275, y: 345,
   },
   palitanaRoom: {
-    x: 455, y: 615,
-  }
+    x: 455, y: 345,
+  },
 };
 // Create output directory
 if (!fs.existsSync(OUTPUT_DIR)) {
@@ -185,18 +130,6 @@ function trimNameToLength(name, maxLength = 23) {
 }
 
 function getUserPhotoPath(user) {
-  // First try the Original Photos directory with user ID
-  const originalPhotosDir = './Original Photos';
-  const extensions = ['.png', '.jpg', '.jpeg', '.webp'];
-  
-  for (const ext of extensions) {
-    const photoPath = path.join(originalPhotosDir, `${user.id}${ext}`);
-    if (fs.existsSync(photoPath)) {
-      return photoPath;
-    }
-  }
-  
-  // Fallback to old method if not found in Original Photos
   if (user.idPhotoKey && user.idPhotoKey.trim() !== '') {
     return path.join(FILES_DIR, user.idPhotoKey);
   }
@@ -315,13 +248,11 @@ async function generateFrontCard(user, template) {
     // Registration Number (centered)
     ctx.textAlign = 'center';
     ctx.font = 'bold 35px Arial';
-    //  ctx.font = 'bold 45px Arial';
     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
     
     // Name and Gender (left-aligned for consistency)
     ctx.textAlign = 'left';
     ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
     const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
     ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
     
@@ -335,7 +266,6 @@ async function generateFrontCard(user, template) {
     // Bus and Tent numbers (centered in their boxes)
     ctx.textAlign = 'center';
     ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
 
     const busNo = user.busNo ? String(user.busNo).trim() : '';
     const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
@@ -368,57 +298,15 @@ async function generateBackCard(user, template) {
     // Registration Number (centered)
     ctx.textAlign = 'center';
     ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
     ctx.fillText(user.id, POSITIONS.backRegNumber.x, POSITIONS.backRegNumber.y);
 
     // Room allotment details
     ctx.textAlign = 'left';
     ctx.font = 'bold 18px Arial';
-    // ctx.font = 'bold 25px Arial';
     ctx.fillStyle = '#E91E63';
 
-    const nakodaBlock = user.nakodaBlock ? String(user.nakodaBlock).trim() : '';
-    const nakodaRoom = user.nakodaRoom ? String(user.nakodaRoom).trim() : '';
-    const tarangaBlock = user.tarangaBlock ? String(user.tarangaBlock).trim() : '';
-    const tarangaRoom = user.tarangaRoom ? String(user.tarangaRoom).trim() : '';
-    const sankeshwarBlock = user.sankeshwarBlock ? String(user.sankeshwarBlock).trim() : '';
-    const sankeshwarRoom = user.sankeshwarRoom ? String(user.sankeshwarRoom).trim() : '';
-    const girnarBlock = user.girnarBlock ? String(user.girnarBlock).trim() : '';
-    const girnarRoom = user.girnarRoom ? String(user.girnarRoom).trim() : '';
     const palitanaBlock = user.palitanaBlock ? String(user.palitanaBlock).trim() : '';
     const palitanaRoom = user.palitanaRoom ? String(user.palitanaRoom).trim() : '';
-    
-    if (nakodaBlock) {
-      ctx.fillText(nakodaBlock, POSITIONS.nakodaBlock.x, POSITIONS.nakodaBlock.y);
-    }
-
-    if (nakodaRoom) {
-      ctx.fillText(nakodaRoom, POSITIONS.nakodaRoom.x, POSITIONS.nakodaRoom.y);
-    }
-
-    if (tarangaBlock) {
-      ctx.fillText(tarangaBlock, POSITIONS.tarangaBlock.x, POSITIONS.tarangaBlock.y);
-    }
-
-    if (tarangaRoom) {
-      ctx.fillText(tarangaRoom, POSITIONS.tarangaRoom.x, POSITIONS.tarangaRoom.y);
-    }
-
-    if (sankeshwarBlock) {
-      ctx.fillText(sankeshwarBlock, POSITIONS.sankeshwarBlock.x, POSITIONS.sankeshwarBlock.y);
-    }
-
-    if (sankeshwarRoom) {
-      ctx.fillText(sankeshwarRoom, POSITIONS.sankeshwarRoom.x, POSITIONS.sankeshwarRoom.y);
-    }
-
-    if (girnarBlock) {
-      ctx.fillText(girnarBlock, POSITIONS.girnarBlock.x, POSITIONS.girnarBlock.y);
-    }
-
-    if (girnarRoom) {
-      ctx.fillText(girnarRoom, POSITIONS.girnarRoom.x, POSITIONS.girnarRoom.y);
-    }
 
     if (palitanaBlock) {
       ctx.fillText(palitanaBlock, POSITIONS.palitanaBlock.x, POSITIONS.palitanaBlock.y);
@@ -495,8 +383,6 @@ async function processUser(user, frontTemplate, backTemplate) {
   try {
     const frontDir = `${OUTPUT_DIR}/luggagetags-front`;
     const backDir = `${OUTPUT_DIR}/luggagetags-back`;
-    // const frontDir = `${OUTPUT_DIR}/id-front`;
-    // const backDir = `${OUTPUT_DIR}/id-back`;
     
     if (!fs.existsSync(frontDir)) {
       fs.mkdirSync(frontDir, { recursive: true });
