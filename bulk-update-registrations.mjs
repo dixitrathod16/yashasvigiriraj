@@ -115,17 +115,17 @@ function identifyMissingAttributes(existingItem, rowData) {
 
     const existingValue = existingItem[key];
 
-    // let isMissing = false;
-    // if (key === 'arrivalDate') {
-    //   isMissing = true;
-    // } else {
-    //   isMissing = existingValue === undefined || existingValue === null || (typeof existingValue === 'string' && existingValue.trim() === '');
-    // }
+    let isMissing = false;
+    if (key === 'roomNo') {
+      isMissing = true;
+    } else {
+      isMissing = existingValue === undefined || existingValue === null || (typeof existingValue === 'string' && existingValue.trim() === '');
+    }
 
-    // if (existingValue !== cellValue) {
-    //   console.log(`${key} updated for ${existingItem.id} with old value ${existingValue} and new value ${cellValue}`);
-    // }
-    const isMissing = existingValue === undefined || existingValue === null || (typeof existingValue === 'string' && existingValue.trim() === '');
+    if (existingValue !== cellValue) {
+      console.log(`${key} updated for ${existingItem.id} with old value ${existingValue} and new value ${cellValue}`);
+    }
+    // const isMissing = existingValue === undefined || existingValue === null || (typeof existingValue === 'string' && existingValue.trim() === '');
 
     if (isMissing) {
       const attrAlias = `#attr_${missing.length}`;

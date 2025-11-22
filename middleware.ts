@@ -21,14 +21,42 @@ export async function middleware(request: NextRequest) {
 
     // For all other admin routes, check authentication
     const adminToken = cookies().get('admin-token')?.value;
-    
+
     if (!adminToken) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-    
+
     const payload = await decrypt(adminToken);
     if (!payload || payload.role !== 'admin') {
       return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+  }
+
+  // Check for coordinator routes
+  if (request.nextUrl.pathname.startsWith('/coordinator')) {
+    // Don't check auth for the login page itself
+    if (request.nextUrl.pathname === '/coordinator/login') {
+      // If user is already authenticated, redirect to dashboard
+      const token = request.cookies.get('coordinator-token')?.value;
+      if (token) {
+        const payload = await decrypt(token);
+        if (payload?.role === 'coordinator') {
+          return NextResponse.redirect(new URL('/coordinator/dashboard', request.url));
+        }
+      }
+      return NextResponse.next();
+    }
+
+    // For all other coordinator routes, check authentication
+    const token = cookies().get('coordinator-token')?.value;
+
+    if (!token) {
+      return NextResponse.redirect(new URL('/coordinator/login', request.url));
+    }
+
+    const payload = await decrypt(token);
+    if (!payload || payload.role !== 'coordinator') {
+      return NextResponse.redirect(new URL('/coordinator/login', request.url));
     }
   }
 
@@ -42,16 +70,16 @@ export async function middleware(request: NextRequest) {
       process.env.NEXT_PUBLIC_SITE_URL || '',
       process.env.NEXT_DEVELOPMENT_SITE_URL || '',
     ];
-    
+
 
     const allowedHosts: string[] = [];
-    
+
     // Extract hostname from NEXT_PUBLIC_SITE_URL, NEXT_DEVELOPMENT_SITE_URL
     allowedReferers.forEach(siteUrl => {
       if (!siteUrl) {
         return;
       }
-      try{
+      try {
         allowedHosts.push(new URL(siteUrl).hostname);
       } catch {
         allowedHosts.push(siteUrl);

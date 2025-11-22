@@ -4,10 +4,10 @@ const path = require('path');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const QRCode = require('qrcode');
 
-// const FRONT_TEMPLATE = 'idTemplates/chariPalithSanghFrontTemplate.jpg';
-// const BACK_TEMPLATE = 'idTemplates/chariPalithSanghBackTemplate.jpg';
-const FRONT_TEMPLATE = './idTemplates/2tag-01.jpg';
-const BACK_TEMPLATE = './idTemplates/2tag-02.jpg';
+// const FRONT_TEMPLATE = 'idTemplates/chariPalithSanghFrontTemplate.jpg'; // For Id Card
+// const BACK_TEMPLATE = 'idTemplates/chariPalithSanghBackTemplate.jpg'; // For Id Card
+const FRONT_TEMPLATE = './idTemplates/2tag-01.jpg'; // For tags
+const BACK_TEMPLATE = './idTemplates/2tag-02.jpg'; // For tags
 const DATA_FILE = './data-imports/chariApprovedRegistrations.json';
 const FILES_DIR = './files';
 const OUTPUT_DIR = './charipalith-id';
@@ -22,7 +22,7 @@ const PHOTO_FIT_MODE = 'cover'; // Options: 'cover', 'contain', 'fill'
 // 'contain' - Fit entire photo, may have empty space (no cropping, no distortion)
 // 'fill' - Stretch to fill (may distort, no cropping, no empty space)
 
-// Position configuration ChariPalith
+// Position configuration ChariPalith ID Card
 // const POSITIONS = {
 //   userPhoto: { x: 293, y: 390, width: 315, height: 315 },
 //   qrCode: { x: 85, y: 660, size: 130 },
@@ -87,6 +87,7 @@ const POSITIONS = {
     x: 455, y: 345,
   },
 };
+
 // Create output directory
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -259,14 +260,14 @@ async function generateFrontCard(user, template) {
     
     // Registration Number (centered)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 35px Arial';
-    // ctx.font = 'bold 45px Arial';
+    ctx.font = 'bold 35px Arial'; // For tags
+    // ctx.font = 'bold 45px Arial'; // For Id Card
     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
     
     // Name and Gender (left-aligned for consistency)
     ctx.textAlign = 'left';
-    ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
+    ctx.font = 'bold 30px Arial'; // For tags
+    // ctx.font = 'bold 35px Arial'; // For Id Card
     const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
     ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
     
@@ -279,8 +280,8 @@ async function generateFrontCard(user, template) {
     
     // Bus and Tent numbers (centered in their boxes)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
+    ctx.font = 'bold 30px Arial'; // For tags
+    // ctx.font = 'bold 35px Arial'; // For Id Card
 
     const busNo = user.busNo ? String(user.busNo).trim() : '';
     const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
@@ -312,14 +313,14 @@ async function generateBackCard(user, template) {
     
     // Registration Number (centered)
     ctx.textAlign = 'center';
-    ctx.font = 'bold 30px Arial';
-    // ctx.font = 'bold 35px Arial';
+    ctx.font = 'bold 30px Arial'; // For tags
+    // ctx.font = 'bold 35px Arial'; // For Id Card
     ctx.fillText(user.id, POSITIONS.backRegNumber.x, POSITIONS.backRegNumber.y);
 
     // Room allotment details
     ctx.textAlign = 'left';
-    ctx.font = 'bold 18px Arial';
-    // ctx.font = 'bold 25px Arial';
+    ctx.font = 'bold 18px Arial'; // For tags
+    // ctx.font = 'bold 25px Arial'; // For Id Card
     ctx.fillStyle = '#E91E63';
 
     const palitanaBlock = user.palitanaBlock ? String(user.palitanaBlock).trim() : '';
@@ -340,68 +341,13 @@ async function generateBackCard(user, template) {
   }
 }
 
-// Generate front card without photo
-// async function generateFrontCardNoPhoto(user, template) {
-//   try {
-//     const canvas = createCanvas(template.width, template.height);
-//     const ctx = canvas.getContext('2d');
-    
-//     ctx.drawImage(template, 0, 0);
-    
-//     // Generate QR code
-//     const qrBuffer = await generateQRCode(user.id);
-//     if (qrBuffer) {
-//       const qrImage = await loadImage(qrBuffer);
-//       const { x, y, size } = POSITIONS.qrCode;
-//       ctx.drawImage(qrImage, x, y, size, size);
-//     }
-    
-//     // Draw text (same as regular front card)
-//     ctx.fillStyle = '#E91E63';
-    
-//     ctx.textAlign = 'center';
-//     ctx.font = 'bold 45px Arial';
-//     ctx.fillText(user.id, POSITIONS.regNumber.x, POSITIONS.regNumber.y);
-    
-//     ctx.textAlign = 'left';
-//     ctx.font = 'bold 35px Arial';
-//     const formattedName = trimNameToLength(toTitleCase(user.fullName), 23);
-//     ctx.fillText(formattedName || '', POSITIONS.name.x, POSITIONS.name.y);
-    
-//     const genderText = user.gender === 'M' ? 'Male' : user.gender === 'F' ? 'Female' : user.gender;
-//     ctx.fillText(genderText, POSITIONS.gender.x, POSITIONS.gender.y);
-    
-//     ctx.fillText(user.age || '', POSITIONS.age.x, POSITIONS.age.y);
-//     ctx.fillText(user.phoneNumber || '', POSITIONS.phone.x, POSITIONS.phone.y);
-    
-//     ctx.textAlign = 'center';
-//     ctx.font = 'bold 35px Arial';
-
-//     const busNo = user.busNo ? String(user.busNo).trim() : '';
-//     const tentNo = user.tentNo ? String(user.tentNo).trim() : '';
-
-//     if (busNo) {
-//       ctx.fillText(busNo, POSITIONS.busNumber.x, POSITIONS.busNumber.y);
-//     }
-
-//     if (tentNo) {
-//       ctx.fillText(tentNo, POSITIONS.tentNumber.x, POSITIONS.tentNumber.y);
-//     }
-    
-//     return canvas.toBuffer('image/png');
-//   } catch (err) {
-//     console.error(`Error generating front card (no photo) for ${user.id}:`, err.message);
-//     return null;
-//   }
-// }
-
 // Process a single user
 async function processUser(user, frontTemplate, backTemplate) {
   try {
-    const frontDir = `${OUTPUT_DIR}/luggagetags-front`;
-    const backDir = `${OUTPUT_DIR}/luggagetags-back`;
-    // const frontDir = `${OUTPUT_DIR}/id-front`;
-    // const backDir = `${OUTPUT_DIR}/id-back`;
+    const frontDir = `${OUTPUT_DIR}/luggagetags-front`; // For tags
+    const backDir = `${OUTPUT_DIR}/luggagetags-back`; // For tags
+    // const frontDir = `${OUTPUT_DIR}/id-front`; // For Id Card
+    // const backDir = `${OUTPUT_DIR}/id-back`; // For Id Card
     
     if (!fs.existsSync(frontDir)) {
       fs.mkdirSync(frontDir, { recursive: true });

@@ -14,6 +14,9 @@ interface Tab {
 const TABS: Tab[] = [
   // { id: 'notifications', label: 'Notification Subscriptions' },
   { id: 'registrations', label: 'User Registrations' },
+  { id: 'coordinators', label: 'Coordinators' },
+  { id: 'destinations', label: 'Destinations' },
+  { id: 'attendance', label: 'Attendance' },
   // Add more tabs here as needed
 ];
 
@@ -29,7 +32,13 @@ export default function AdminLayout({
 
   // Sync active tab with URL
   useEffect(() => {
-    if (pathname.includes('/admin/dashboard')) {
+    if (pathname.includes('/admin/dashboard/coordinators')) {
+      setActiveTab('coordinators');
+    } else if (pathname.includes('/admin/dashboard/destinations')) {
+      setActiveTab('destinations');
+    } else if (pathname.includes('/admin/dashboard/attendance')) {
+      setActiveTab('attendance');
+    } else if (pathname.includes('/admin/dashboard')) {
       setActiveTab('registrations');
     }
     // } else if (pathname.includes('/admin/dashboard')) {
@@ -44,6 +53,12 @@ export default function AdminLayout({
     // } else 
     if (tabId === 'registrations') {
       router.push('/admin/dashboard');
+    } else if (tabId === 'coordinators') {
+      router.push('/admin/dashboard/coordinators');
+    } else if (tabId === 'destinations') {
+      router.push('/admin/dashboard/destinations');
+    } else if (tabId === 'attendance') {
+      router.push('/admin/dashboard/attendance');
     }
     setDrawerOpen(false); // Close drawer on mobile
     // No need to setActiveTab here, as the effect will update it based on the URL
