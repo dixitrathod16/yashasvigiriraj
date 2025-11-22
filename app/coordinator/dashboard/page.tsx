@@ -99,22 +99,10 @@ export default function CoordinatorDashboard() {
             } else {
                 if (res.status === 409) {
                     toast.warning(`Already recorded: ${registrationId}`);
-                    addScanResult({
-                        timestamp: new Date().toLocaleTimeString(),
-                        registrationId,
-                        name: 'Unknown',
-                        status: 'duplicate',
-                        message: 'Already recorded'
-                    });
+                    // Don't add to recent activity
                 } else {
                     toast.error(data.error || 'Failed to record');
-                    addScanResult({
-                        timestamp: new Date().toLocaleTimeString(),
-                        registrationId,
-                        name: 'Unknown',
-                        status: 'error',
-                        message: data.error || 'Failed'
-                    });
+                    // Don't add to recent activity
                 }
             }
         } catch (error) {
@@ -224,8 +212,8 @@ export default function CoordinatorDashboard() {
                     <h3 className="font-semibold text-sm text-gray-600">Recent Activity</h3>
                     {recentScans.map((scan, i) => (
                         <div key={i} className={`p-3 rounded-lg text-sm flex justify-between items-center ${scan.status === 'success' ? 'bg-green-50 border border-green-100' :
-                                scan.status === 'duplicate' ? 'bg-yellow-50 border border-yellow-100' :
-                                    'bg-red-50 border border-red-100'
+                            scan.status === 'duplicate' ? 'bg-yellow-50 border border-yellow-100' :
+                                'bg-red-50 border border-red-100'
                             }`}>
                             <div>
                                 <p className="font-medium">{scan.registrationId} - {scan.name}</p>
