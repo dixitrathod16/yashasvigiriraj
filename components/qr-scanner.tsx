@@ -1,61 +1,59 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { useEffect, useRef } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface QRScannerProps {
     onScan: (decodedText: string) => void;
     onError?: (error: string) => void;
 }
 
-export default function QRScanner({ onScan, onError }: QRScannerProps) {
-    const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-    const [scanError] = useState<string | null>(null);
+export default function QRScanner({ onScan }: QRScannerProps) {
+    const scannerRef = useRef<Html5Qrcode | null>(null);
+    const isScanning = useRef(false);
 
     useEffect(() => {
-        // Initialize scanner
-        const scanner = new Html5QrcodeScanner(
-            "reader",
-            {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0
-            },
-      /* verbose= */ false
-        );
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        scannerRef.current = html5QrCode;
 
-        scanner.render(
+        const config = {
+            fps: 5,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+        };
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            config,
             (decodedText) => {
-                // Success callback
-                onScan(decodedText);
-                // Optional: Pause or clear scanner after success if needed, 
-                // but usually we want to keep scanning or let parent handle it.
-                // scanner.clear(); 
+                if (!isScanning.current) {
+                    isScanning.current = true;
+                    onScan(decodedText);
+                    // Add a small delay before allowing next scan
+                    setTimeout(() => {
+                        isScanning.current = false;
+                    }, 3000);
+                }
             },
-            (errorMessage) => {
-                // Error callback (called frequently when no QR code is found)
-                // We generally ignore this unless it's a critical error
-                // console.log(errorMessage);
-                if (onError) onError(errorMessage);
+            () => {
+                // Error callback - ignore, this fires continuously when no QR is detected
             }
-        );
+        ).catch((err) => {
+            console.error("Unable to start scanning", err);
+        });
 
-        scannerRef.current = scanner;
-
-        // Cleanup
         return () => {
-            if (scannerRef.current) {
-                scannerRef.current.clear().catch(error => {
-                    console.error("Failed to clear html5-qrcode scanner. ", error);
+            if (scannerRef.current && scannerRef.current.isScanning) {
+                scannerRef.current.stop().catch((err) => {
+                    console.error("Error stopping scanner:", err);
                 });
             }
         };
-    }, [onScan, onError]);
+    }, [onScan]);
 
     return (
-        <div className="w-full max-w-md mx-auto">
-            <div id="reader" className="w-full"></div>
-            {scanError && <p className="text-red-500 text-sm mt-2">{scanError}</p>}
+        <div className="w-full">
+            <div id="qr-reader" className="w-full rounded-lg overflow-hidden"></div>
         </div>
     );
 }
