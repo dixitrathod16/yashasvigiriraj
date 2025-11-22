@@ -92,7 +92,7 @@ export default function AttendancePage() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 mt-10">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Attendance Tracking</h1>
                 <div className="w-[300px]">

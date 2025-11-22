@@ -12,6 +12,12 @@ export default function QRScanner({ onScan }: QRScannerProps) {
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const isScanning = useRef(false);
     const streamRef = useRef<MediaStream | null>(null);
+    const onScanRef = useRef(onScan);
+
+    // Update the ref when onScan changes
+    useEffect(() => {
+        onScanRef.current = onScan;
+    }, [onScan]);
 
     useEffect(() => {
         let isMounted = true;
@@ -33,7 +39,7 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                     (decodedText) => {
                         if (!isScanning.current && isMounted) {
                             isScanning.current = true;
-                            onScan(decodedText);
+                            onScanRef.current(decodedText);
                             setTimeout(() => {
                                 isScanning.current = false;
                             }, 3000);
@@ -90,7 +96,7 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                 console.debug("Scanner cleanup completed");
             }
         };
-    }, [onScan]);
+    }, []); // Empty dependency array - only run once on mount
 
     return (
         <div className="w-full">
