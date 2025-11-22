@@ -10,7 +10,7 @@ interface QRScannerProps {
 
 export default function QRScanner({ onScan, onError }: QRScannerProps) {
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-    const [scanError, setScanError] = useState<string | null>(null);
+    const [scanError] = useState<string | null>(null);
 
     useEffect(() => {
         // Initialize scanner

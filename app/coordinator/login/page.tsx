@@ -33,8 +33,9 @@ export default function CoordinatorLogin() {
 
             toast.success('Login successful');
             router.push('/coordinator/dashboard');
-        } catch (error: any) {
-            toast.error(error.message || 'Invalid credentials');
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Invalid credentials';
+            toast.error(errorMessage);
         } finally {
             setIsLoading(false);
         }

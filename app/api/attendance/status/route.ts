@@ -1,9 +1,21 @@
 import { NextResponse } from 'next/server';
-import { QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, QueryCommandInput } from "@aws-sdk/lib-dynamodb";
 import { dynamoDb } from '@/lib/dynamodb';
 
 const USER_TABLE = 'user_registrations';
 const ATTENDANCE_TABLE = 'pilgrimage_attendance';
+
+interface DynamoUser {
+    id: string;
+    formType: string;
+    status: string;
+    fullName?: string;
+    name?: string;
+    mobileNumber?: string;
+    phone?: string;
+    phoneNumber?: string;
+    [key: string]: unknown;
+}
 
 export async function GET(request: Request) {
     try {
@@ -31,11 +43,11 @@ export async function GET(request: Request) {
         // Ideally we'd have a GSI on status or type, but for now we'll scan and filter.
         // 2. Get all APPROVED SAN/CHA users using Query (optimized)
         const fetchUsersByType = async (type: string) => {
-            let users: any[] = [];
+            let users: DynamoUser[] = [];
             let lastEvaluatedKey = undefined;
 
             do {
-                const params: any = {
+                const params: QueryCommandInput = {
                     TableName: USER_TABLE,
                     KeyConditionExpression: 'formType = :type',
                     FilterExpression: '#status = :status',
@@ -54,7 +66,7 @@ export async function GET(request: Request) {
 
                 const result = await dynamoDb.send(new QueryCommand(params));
                 if (result.Items) {
-                    users = [...users, ...result.Items];
+                    users = [...users, ...(result.Items as unknown as DynamoUser[])];
                 }
                 lastEvaluatedKey = result.LastEvaluatedKey;
             } while (lastEvaluatedKey);
