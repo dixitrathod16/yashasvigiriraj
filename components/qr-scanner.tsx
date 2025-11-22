@@ -27,10 +27,13 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                 const html5QrCode = new Html5Qrcode("qr-reader");
                 scannerRef.current = html5QrCode;
 
+                // Make qrbox responsive - use 70% of the container width up to 300px
+                // const qrboxSize = Math.min(300, Math.floor(window.innerWidth * 0.7));
+
                 const config = {
                     fps: 5,
-                    qrbox: { width: 250, height: 250 },
                     aspectRatio: 1.0,
+                    qrbox: { width: 250, height: 250 },
                 };
 
                 await html5QrCode.start(
@@ -55,6 +58,11 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                     const videoElement = document.querySelector('#qr-reader video') as HTMLVideoElement;
                     if (videoElement && videoElement.srcObject) {
                         streamRef.current = videoElement.srcObject as MediaStream;
+
+                        // Apply custom styling to ensure video fits the square container
+                        videoElement.style.objectFit = 'cover';
+                        videoElement.style.width = '100%';
+                        videoElement.style.height = '100%';
                     }
                 } catch {
                     console.debug("Could not get video stream reference");
@@ -99,8 +107,8 @@ export default function QRScanner({ onScan }: QRScannerProps) {
     }, []); // Empty dependency array - only run once on mount
 
     return (
-        <div className="w-full">
-            <div id="qr-reader" className="w-full rounded-lg overflow-hidden"></div>
+        <div className="w-full h-full">
+            <div id="qr-reader" className="w-full h-full"></div>
         </div>
     );
 }
