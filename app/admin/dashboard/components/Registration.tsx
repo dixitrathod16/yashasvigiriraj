@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import { runExcelExportWorker } from './exportWorkerWrapper';
+import { runGenericExportWorker } from './genericExportWorkerWrapper';
 import {
     Table,
     TableBody,
@@ -36,21 +37,21 @@ import { Download } from 'lucide-react';
 
 // Date configurations for arrival details based on formType
 const ARRIVAL_DATE_CONFIGS = {
-  SAN: {
-    minDate: '2025-11-23',
-    maxDate: '2025-11-26',
-    places: ['Sildar', 'Jirawala']
-  },
-  CHA: {
-    minDate: '2025-11-30',
-    maxDate: '2025-12-01',
-    places: ['Ayodhyapuram Tirth']
-  },
-  NAV: {
-    minDate: '2025-12-05',
-    maxDate: '2025-12-08',
-    places: ['Palitana (Jalori Bhavan)']
-  }
+    SAN: {
+        minDate: '2025-11-23',
+        maxDate: '2025-11-26',
+        places: ['Sildar', 'Jirawala']
+    },
+    CHA: {
+        minDate: '2025-11-30',
+        maxDate: '2025-12-01',
+        places: ['Ayodhyapuram Tirth']
+    },
+    NAV: {
+        minDate: '2025-12-05',
+        maxDate: '2025-12-08',
+        places: ['Palitana (Jalori Bhavan)']
+    }
 };
 
 type RegistrationStatus = 'PENDING' | 'SHORTLISTED' | 'APPROVED' | 'REJECTED';
@@ -159,6 +160,15 @@ export function Registration() {
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
     const [isContactExportDialogOpen, setIsContactExportDialogOpen] = useState(false);
     const [includeImages, setIncludeImages] = useState(true);
+    // Custom Export State
+    const [isCustomExportDialogOpen, setIsCustomExportDialogOpen] = useState(false);
+    const [customSegregateBy, setCustomSegregateBy] = useState<string>('none');
+    const [customSelectedColumns, setCustomSelectedColumns] = useState<string[]>([]);
+    const [customFormTypes, setCustomFormTypes] = useState<string[]>(['SAN', 'CHA', 'NAV']);
+    const [customStatuses, setCustomStatuses] = useState<string[]>(['PENDING', 'SHORTLISTED', 'APPROVED', 'REJECTED', 'INACTIVE']);
+    const [customBlankColumns, setCustomBlankColumns] = useState<{ header: string, width: number }[]>([]);
+    const [newBlankColumnHeader, setNewBlankColumnHeader] = useState('');
+
     const [sortColumn, setSortColumn] = useState<'id' | 'fullName' | 'age' | 'createdAt' | 'city' | 'village' | 'group'>('createdAt');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [advancedFilters, setAdvancedFilters] = useState({
@@ -199,6 +209,9 @@ export function Registration() {
     // Confirmation dialog state
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
     const [pendingBulkAction, setPendingBulkAction] = useState<RegistrationStatus | ''>('');
+    // Undo confirmation dialog state
+    const [isUndoConfirmDialogOpen, setIsUndoConfirmDialogOpen] = useState(false);
+    const [undoAction, setUndoAction] = useState<{ id: string, status: RegistrationStatus, action: string } | null>(null);
 
 
     // Calculate totals per category
@@ -257,7 +270,7 @@ export function Registration() {
             if (idFilter.includes(',')) {
                 // Split by comma and check if any of the IDs match
                 const ids = idFilter.split(',').map(id => id.trim()).filter(id => id.length > 0);
-                const matches = ids.some(id => 
+                const matches = ids.some(id =>
                     reg.id
                         .toLowerCase()
                         .trim()
@@ -452,7 +465,7 @@ export function Registration() {
         setSelectedRegistrations(newSet);
     };
 
-    const isAllFilteredSelected = allFilteredRegistrations.length > 0 && 
+    const isAllFilteredSelected = allFilteredRegistrations.length > 0 &&
         allFilteredRegistrations.every(reg => selectedRegistrations.has(reg.id));
 
     const clearSelection = () => {
@@ -462,16 +475,16 @@ export function Registration() {
     // Bulk status update function
     const handleBulkStatusUpdate = async () => {
         if (!bulkStatus || selectedRegistrations.size === 0) return;
-        
+
         // Show confirmation dialog instead of directly updating
         setPendingBulkAction(bulkStatus);
         setIsConfirmDialogOpen(true);
     };
-    
+
     // Actual bulk update function that gets called after confirmation
     const performBulkStatusUpdate = async () => {
         if (!pendingBulkAction || selectedRegistrations.size === 0) return;
-        
+
         setBulkActionLoading(true);
         setIsConfirmDialogOpen(false);
         try {
@@ -484,24 +497,24 @@ export function Registration() {
                     aadharNumber: reg.aadharNumber,
                     status: pendingBulkAction
                 }));
-            
+
             // Send bulk update request
             const response = await fetch(`/api/admin/registrations`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(registrationsToUpdate)
             });
-            
+
             if (response.ok) {
                 // Update local state
-                setRegistrations(prev => 
-                    prev.map(reg => 
-                        selectedRegistrations.has(reg.id) 
-                            ? { ...reg, status: pendingBulkAction } 
+                setRegistrations(prev =>
+                    prev.map(reg =>
+                        selectedRegistrations.has(reg.id)
+                            ? { ...reg, status: pendingBulkAction }
                             : reg
                     )
                 );
-                
+
                 toast.success(`${selectedRegistrations.size} registration(s) updated successfully`);
                 clearSelection();
                 setBulkStatus('PENDING'); // Reset bulk status
@@ -719,11 +732,11 @@ export function Registration() {
             if (!response.ok) throw new Error('Failed to mark registration as inactive');
 
             // Update the registration status in the local state
-            const updatedRegistrations = registrations.map(reg => 
+            const updatedRegistrations = registrations.map(reg =>
                 reg.id === registration.id ? { ...reg, status: 'INACTIVE' as const } : reg
             );
             setRegistrations(updatedRegistrations);
-            
+
             // Update selected registration if it's the one being deleted
             if (selectedRegistration?.id === registration.id) {
                 setSelectedRegistration({ ...selectedRegistration, status: 'INACTIVE' });
@@ -735,6 +748,19 @@ export function Registration() {
             toast.error('Failed to mark registration as inactive');
         } finally {
             setStatusActionLoading({ id: null, action: null });
+        }
+    };
+
+    const initiateUndo = (id: string, status: RegistrationStatus, action: string) => {
+        setUndoAction({ id, status, action });
+        setIsUndoConfirmDialogOpen(true);
+    };
+
+    const confirmUndo = async () => {
+        if (undoAction) {
+            await handleStatusChange(undoAction.id, undoAction.status, undoAction.action);
+            setIsUndoConfirmDialogOpen(false);
+            setUndoAction(null);
         }
     };
 
@@ -759,11 +785,11 @@ export function Registration() {
             if (!response.ok) throw new Error('Failed to restore registration');
 
             // Update the registration status in the local state
-            const updatedRegistrations = registrations.map(reg => 
+            const updatedRegistrations = registrations.map(reg =>
                 reg.id === registration.id ? { ...reg, status: 'PENDING' as const } : reg
             );
             setRegistrations(updatedRegistrations);
-            
+
             // Update selected registration if it's the one being restored
             if (selectedRegistration?.id === registration.id) {
                 setSelectedRegistration({ ...selectedRegistration, status: 'PENDING' });
@@ -838,25 +864,25 @@ export function Registration() {
         } else if (Number(form.emergencyContact) !== Number('9999999999') && form.emergencyContact === form.phoneNumber) {
             errors.emergencyContact = 'Emergency number should be different from mobile number';
         }
-        
+
         // Validation for allotment fields (max 100 characters)
         const allotmentFields = [
-            'busNo', 'tentNo', 'roomNo', 
-            'nakodaBlock', 'nakodaRoom', 
-            'tarangaBlock', 'tarangaRoom', 
-            'sankeshwarBlock', 'sankeshwarRoom', 
-            'girnarBlock', 'girnarRoom', 
-            'palitanaBlock', 'palitanaRoom', 
+            'busNo', 'tentNo', 'roomNo',
+            'nakodaBlock', 'nakodaRoom',
+            'tarangaBlock', 'tarangaRoom',
+            'sankeshwarBlock', 'sankeshwarRoom',
+            'girnarBlock', 'girnarRoom',
+            'palitanaBlock', 'palitanaRoom',
             'navanuRoom'
         ];
-        
+
         allotmentFields.forEach(field => {
             const value = form[field as keyof Registration];
             if (value && typeof value === 'string' && value.length > 100) {
                 errors[field] = 'Field value cannot exceed 100 characters';
             }
         });
-        
+
         return errors;
     }
 
@@ -889,18 +915,18 @@ export function Registration() {
         if (Object.keys(errors).length > 0) return;
         setEditLoading(true);
         const aadharChanged = String(editForm.aadharNumber) !== String(selectedRegistration.aadharNumber);
-        
+
         // Trim whitespace from allotment fields
         const allotmentFields = [
-            'busNo', 'tentNo', 'roomNo', 
-            'nakodaBlock', 'nakodaRoom', 
-            'tarangaBlock', 'tarangaRoom', 
-            'sankeshwarBlock', 'sankeshwarRoom', 
-            'girnarBlock', 'girnarRoom', 
-            'palitanaBlock', 'palitanaRoom', 
+            'busNo', 'tentNo', 'roomNo',
+            'nakodaBlock', 'nakodaRoom',
+            'tarangaBlock', 'tarangaRoom',
+            'sankeshwarBlock', 'sankeshwarRoom',
+            'girnarBlock', 'girnarRoom',
+            'palitanaBlock', 'palitanaRoom',
             'navanuRoom'
         ];
-        
+
         const trimmedEditForm = { ...editForm };
         allotmentFields.forEach(field => {
             const value = trimmedEditForm[field as keyof Registration];
@@ -908,7 +934,7 @@ export function Registration() {
                 trimmedEditForm[field as keyof Registration] = value.trim() as never;
             }
         });
-        
+
         try {
             // Find the registration by id to get formType and aadharNumber
             const regIndex = registrations.findIndex(r => r.id === selectedRegistration.id);
@@ -1113,6 +1139,119 @@ export function Registration() {
     const handleClearPhoto = () => { setNewPhotoFile(null); setNewPhotoPreview(null); setImageErrors(e => ({ ...e, photo: undefined })); };
     const handleClearAadhar = () => { setNewAadharFile(null); setNewAadharPreview(null); setImageErrors(e => ({ ...e, aadhar: undefined })); };
 
+    // Define all available columns for custom export
+    const allColumns = useMemo(() => [
+        { header: 'ID', key: 'id', width: 18 },
+        { header: 'Full Name', key: 'fullName', width: 22 },
+        { header: 'Age', key: 'age', width: 8 },
+        { header: 'Gender', key: 'gender', width: 10 },
+        { header: 'Guardian Name', key: 'guardianName', width: 22 },
+        { header: 'Address', key: 'address', width: 30 },
+        { header: 'City', key: 'city', width: 16 },
+        { header: 'Pin Code', key: 'pinCode', width: 12 },
+        { header: 'Village', key: 'village', width: 16 },
+        { header: 'Aadhar Number', key: 'aadharNumber', width: 18 },
+        { header: 'Phone Number', key: 'phoneNumber', width: 16 },
+        { header: 'WhatsApp Number', key: 'whatsappNumber', width: 16 },
+        { header: 'Emergency Contact', key: 'emergencyContact', width: 18 },
+        { header: 'Existing Tapasya', key: 'existingTapasya', width: 18 },
+        { header: 'Linked Form', key: 'linkedForm', width: 18 },
+        { header: 'Previous Participation', key: 'hasParticipatedBefore', width: 16 },
+        { header: 'Form Type', key: 'formType', width: 10 },
+        { header: 'Created At', key: 'createdAt', width: 20 },
+        { header: 'Status', key: 'status', width: 14 },
+        { header: 'Arrival Date', key: 'arrivalDate', width: 16 },
+        { header: 'Arrival Time', key: 'arrivalTime', width: 14 },
+        { header: 'Arrival Place', key: 'arrivalPlace', width: 16 },
+        { header: 'Additional Notes', key: 'additionalNotes', width: 30 },
+        { header: 'Travel Details Submitted', key: 'travelDetailsSubmittedAt', width: 20 },
+        { header: 'Return Date', key: 'returnDate', width: 16 },
+        { header: 'Bus Time', key: 'busTime', width: 14 },
+        { header: 'Return Details Submitted', key: 'returnDetailsSubmittedAt', width: 20 },
+        { header: 'Group', key: 'group', width: 14 },
+        { header: 'Bus Number', key: 'busNo', width: 14 },
+        { header: 'Tent Number', key: 'tentNo', width: 14 },
+        { header: 'Silder/Jirawala Room Number', key: 'roomNo', width: 20 },
+        { header: 'Nakoda Block', key: 'nakodaBlock', width: 14 },
+        { header: 'Nakoda Room', key: 'nakodaRoom', width: 14 },
+        { header: 'Taranga Block', key: 'tarangaBlock', width: 14 },
+        { header: 'Taranga Room', key: 'tarangaRoom', width: 14 },
+        { header: 'Sankeshwar Block', key: 'sankeshwarBlock', width: 16 },
+        { header: 'Sankeshwar Room', key: 'sankeshwarRoom', width: 16 },
+        { header: 'Girnar Block', key: 'girnarBlock', width: 14 },
+        { header: 'Girnar Room', key: 'girnarRoom', width: 14 },
+        { header: 'Palitana Block', key: 'palitanaBlock', width: 14 },
+        { header: 'Palitana Room', key: 'palitanaRoom', width: 14 },
+        { header: 'Navanu Room', key: 'navanuRoom', width: 14 },
+    ], []);
+
+    // Initialize selected columns with all columns
+    useEffect(() => {
+        setCustomSelectedColumns(allColumns.map(c => c.key));
+    }, [allColumns]);
+
+    async function handleCustomExport() {
+        setExportLoading(true);
+        setIsCustomExportDialogOpen(false);
+
+        // Filter columns based on selection
+        const columnsToExport = allColumns.filter(col => customSelectedColumns.includes(col.key));
+
+        // Add blank columns
+        const blankColumns = customBlankColumns.map((col, index) => ({
+            header: col.header,
+            key: `blank_col_${index}`,
+            width: col.width
+        }));
+
+        const columns = [...columnsToExport, ...blankColumns];
+        const imageSize = { width: 80, height: 100 };
+
+        // Filter registrations based on customFormTypes and customStatuses
+        const filteredRegistrationsForExport = registrations.filter(reg =>
+            customFormTypes.includes(reg.formType) && customStatuses.includes(reg.status)
+        );
+
+        const registrationsObj = { all: filteredRegistrationsForExport, filtered: [] };
+
+        // Store the worker instance for cancellation
+        exportWorkerRef.current = runGenericExportWorker({
+            registrations: registrationsObj,
+            filtered: false, // Always export 'all' (which is our filtered list)
+            imageSize: imageSize,
+            columns: columns,
+            includeImages: false, // Never include images in custom export
+            segregateBy: customSegregateBy,
+            onProgress: () => { },
+            onDone: (buf: ArrayBuffer, failedImages: string[]) => {
+                setExportLoading(false);
+                exportWorkerRef.current = null;
+                if (failedImages && failedImages.length > 0) {
+                    toast.warning(`Exported with ${failedImages.length} missing images.`, { duration: 8000 });
+                }
+                const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `custom_registrations_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            },
+            onError: (err: string) => {
+                setExportLoading(false);
+                exportWorkerRef.current = null;
+                toast.error('Failed to export Excel: ' + err);
+            },
+            onCancelled: () => {
+                setExportLoading(false);
+                exportWorkerRef.current = null;
+                toast('Export cancelled.');
+            },
+        });
+    }
+
     async function handleExport(type: 'all' | 'filtered') {
         setExportLoading(true);
         setIsExportDialogOpen(false);
@@ -1147,7 +1286,7 @@ export function Registration() {
             { header: 'Bus Time', key: 'busTime', width: 14 },
             { header: 'Return Details Submitted', key: 'returnDetailsSubmittedAt', width: 20 },
         ];
-        
+
         // Add allotment field columns
         const allotmentColumns = [
             { header: 'Bus Number', key: 'busNo', width: 14 },
@@ -1165,13 +1304,13 @@ export function Registration() {
             { header: 'Palitana Room', key: 'palitanaRoom', width: 14 },
             { header: 'Navanu Room', key: 'navanuRoom', width: 14 },
         ];
-        
+
         // Add image columns only if includeImages is true
         const imageColumns = includeImages ? [
             { header: 'Photo', key: 'photo', width: 20 },
             { header: 'Aadhar', key: 'aadhar', width: 20 },
         ] : [];
-        
+
         const columns = [...baseColumns, { header: 'Group', key: 'group', width: 14 }, ...allotmentColumns, ...imageColumns];
         const imageSize = { width: 80, height: 100 };
         const registrationsObj = { all: registrations, filtered: filteredRegistrations };
@@ -1231,7 +1370,7 @@ export function Registration() {
                 const lines: string[] = [];
                 const firstName = vcfEscape(reg.id);
                 const lastName = vcfEscape(reg.fullName);
-                
+
                 lines.push('BEGIN:VCARD');
                 lines.push('VERSION:3.0');
                 // N format: Last;First;Middle;Prefix;Suffix
@@ -1302,6 +1441,16 @@ export function Registration() {
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
+                    onClick={() => setIsCustomExportDialogOpen(true)}
+                    disabled={exportLoading}
+                >
+                    <Download className="w-4 h-4" />
+                    Custom Export
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
                     onClick={() => setIsContactExportDialogOpen(true)}
                     disabled={exportLoading}
                 >
@@ -1344,6 +1493,167 @@ export function Registration() {
                         </div>
                         <Button onClick={() => handleExport('all')} disabled={exportLoading} className="w-full">Complete Data Export</Button>
                         <Button onClick={() => handleExport('filtered')} disabled={exportLoading} className="w-full">Current Filtered Data Export</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isCustomExportDialogOpen} onOpenChange={setIsCustomExportDialogOpen}>
+                <DialogContent className="w-[320px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Custom Export</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4 mt-2">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-gray-700">Form Type</label>
+                            <div className="flex flex-wrap gap-2">
+                                {['SAN', 'CHA', 'NAV'].map(type => (
+                                    <div key={type} className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id={`ft-${type}`}
+                                            checked={customFormTypes.includes(type)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCustomFormTypes(prev => [...prev, type]);
+                                                } else {
+                                                    setCustomFormTypes(prev => prev.filter(t => t !== type));
+                                                }
+                                            }}
+                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <label htmlFor={`ft-${type}`} className="text-sm text-gray-600">
+                                            {type}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-gray-700">Status</label>
+                            <div className="flex flex-wrap gap-2">
+                                {['PENDING', 'SHORTLISTED', 'APPROVED', 'REJECTED', 'INACTIVE'].map(status => (
+                                    <div key={status} className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id={`st-${status}`}
+                                            checked={customStatuses.includes(status)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCustomStatuses(prev => [...prev, status]);
+                                                } else {
+                                                    setCustomStatuses(prev => prev.filter(s => s !== status));
+                                                }
+                                            }}
+                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <label htmlFor={`st-${status}`} className="text-sm text-gray-600">
+                                            {status}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-gray-700">Segregate by (Tabs)</label>
+                            <Select value={customSegregateBy} onValueChange={setCustomSegregateBy}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="None" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
+                                    <SelectItem value="city">City</SelectItem>
+                                    <SelectItem value="village">Village</SelectItem>
+                                    <SelectItem value="group">Group</SelectItem>
+                                    <SelectItem value="formType">Form Type</SelectItem>
+                                    <SelectItem value="status">Status</SelectItem>
+                                    <SelectItem value="tentNo">Tent Number</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-gray-700">Additional Blank Columns</label>
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder="Header Name"
+                                    value={newBlankColumnHeader}
+                                    onChange={(e) => setNewBlankColumnHeader(e.target.value)}
+                                    className="flex-1"
+                                />
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        if (newBlankColumnHeader.trim()) {
+                                            setCustomBlankColumns([...customBlankColumns, { header: newBlankColumnHeader.trim(), width: 15 }]);
+                                            setNewBlankColumnHeader('');
+                                        }
+                                    }}
+                                >
+                                    Add
+                                </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                {customBlankColumns.map((col, index) => (
+                                    <div key={index} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-sm">
+                                        <span>{col.header}</span>
+                                        <button
+                                            onClick={() => setCustomBlankColumns(customBlankColumns.filter((_, i) => i !== index))}
+                                            className="text-gray-500 hover:text-red-500"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-gray-700">Select Columns</label>
+                            <div className="h-48 overflow-y-auto border rounded p-2 flex flex-col gap-2">
+                                <div className="flex items-center space-x-2 pb-2 border-b">
+                                    <input
+                                        type="checkbox"
+                                        id="select-all-columns"
+                                        checked={customSelectedColumns.length === allColumns.length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setCustomSelectedColumns(allColumns.map(c => c.key));
+                                            } else {
+                                                setCustomSelectedColumns([]);
+                                            }
+                                        }}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <label htmlFor="select-all-columns" className="text-sm font-medium text-gray-700">
+                                        Select All
+                                    </label>
+                                </div>
+                                {allColumns.map(col => (
+                                    <div key={col.key} className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id={`col-${col.key}`}
+                                            checked={customSelectedColumns.includes(col.key)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCustomSelectedColumns(prev => [...prev, col.key]);
+                                                } else {
+                                                    setCustomSelectedColumns(prev => prev.filter(k => k !== col.key));
+                                                }
+                                            }}
+                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <label htmlFor={`col-${col.key}`} className="text-sm text-gray-600">
+                                            {col.header}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <Button onClick={handleCustomExport} disabled={exportLoading} className="w-full">Export</Button>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -1537,14 +1847,14 @@ export function Registration() {
                                     <SelectItem value="INACTIVE">Inactive (Soft Delete)</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button 
+                            <Button
                                 onClick={handleBulkStatusUpdate}
                                 disabled={!bulkStatus || selectedRegistrations.size === 0 || bulkActionLoading}
                             >
                                 {bulkActionLoading ? 'Updating...' : 'Update Status'}
                             </Button>
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={clearSelection}
                                 disabled={selectedRegistrations.size === 0}
                             >
@@ -1832,7 +2142,7 @@ export function Registration() {
                             <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'PENDING', 'undo-shortlist'); }}
+                                onClick={e => { e.stopPropagation(); initiateUndo(reg.id, 'PENDING', 'undo-shortlist'); }}
                                 disabled={statusActionLoading.id === reg.id}
                             >
                                 {statusActionLoading.id === reg.id && statusActionLoading.action === 'undo-shortlist' ? (
@@ -1847,7 +2157,7 @@ export function Registration() {
                             <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'SHORTLISTED', 'undo-approve'); }}
+                                onClick={e => { e.stopPropagation(); initiateUndo(reg.id, 'SHORTLISTED', 'undo-approve'); }}
                                 disabled={statusActionLoading.id === reg.id}
                             >
                                 {statusActionLoading.id === reg.id && statusActionLoading.action === 'undo-approve' ? (
@@ -2017,7 +2327,7 @@ export function Registration() {
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'PENDING', 'undo-shortlist'); }}
+                                                onClick={e => { e.stopPropagation(); initiateUndo(reg.id, 'PENDING', 'undo-shortlist'); }}
                                                 disabled={statusActionLoading.id === reg.id}
                                             >
                                                 {statusActionLoading.id === reg.id && statusActionLoading.action === 'undo-shortlist' ? (
@@ -2032,7 +2342,7 @@ export function Registration() {
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={e => { e.stopPropagation(); handleStatusChange(reg.id, 'SHORTLISTED', 'undo-approve'); }}
+                                                onClick={e => { e.stopPropagation(); initiateUndo(reg.id, 'SHORTLISTED', 'undo-approve'); }}
                                                 disabled={statusActionLoading.id === reg.id}
                                             >
                                                 {statusActionLoading.id === reg.id && statusActionLoading.action === 'undo-approve' ? (
@@ -2363,20 +2673,20 @@ export function Registration() {
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-medium text-gray-500">Arrival Date</Label>
                                                 {isEditing ? (
-                                                    <Input 
-                                                        name="arrivalDate" 
-                                                        type="date" 
-                                                        value={editForm?.arrivalDate || ''} 
+                                                    <Input
+                                                        name="arrivalDate"
+                                                        type="date"
+                                                        value={editForm?.arrivalDate || ''}
                                                         onChange={handleEditChange}
                                                         min={editForm?.formType ? ARRIVAL_DATE_CONFIGS[editForm.formType as keyof typeof ARRIVAL_DATE_CONFIGS]?.minDate : undefined}
                                                         max={editForm?.formType ? ARRIVAL_DATE_CONFIGS[editForm.formType as keyof typeof ARRIVAL_DATE_CONFIGS]?.maxDate : undefined}
                                                     />
                                                 ) : selectedRegistration.arrivalDate ? (
                                                     <p className="text-base font-medium text-gray-900">
-                                                        {new Date(selectedRegistration.arrivalDate).toLocaleDateString('en-GB', { 
-                                                            day: '2-digit', 
-                                                            month: 'short', 
-                                                            year: 'numeric' 
+                                                        {new Date(selectedRegistration.arrivalDate).toLocaleDateString('en-GB', {
+                                                            day: '2-digit',
+                                                            month: 'short',
+                                                            year: 'numeric'
                                                         })}
                                                     </p>
                                                 ) : (
@@ -2387,11 +2697,11 @@ export function Registration() {
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-medium text-gray-500">Arrival Time</Label>
                                                 {isEditing ? (
-                                                    <Input 
-                                                        name="arrivalTime" 
-                                                        type="time" 
-                                                        value={editForm?.arrivalTime || ''} 
-                                                        onChange={handleEditChange} 
+                                                    <Input
+                                                        name="arrivalTime"
+                                                        type="time"
+                                                        value={editForm?.arrivalTime || ''}
+                                                        onChange={handleEditChange}
                                                     />
                                                 ) : selectedRegistration.arrivalTime ? (
                                                     <p className="text-base font-medium text-gray-900">{selectedRegistration.arrivalTime}</p>
@@ -2403,9 +2713,9 @@ export function Registration() {
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-medium text-gray-500">Arrival Place</Label>
                                                 {isEditing ? (
-                                                    <select 
-                                                        name="arrivalPlace" 
-                                                        value={editForm?.arrivalPlace || ''} 
+                                                    <select
+                                                        name="arrivalPlace"
+                                                        value={editForm?.arrivalPlace || ''}
                                                         onChange={handleEditChange}
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                     >
@@ -2424,10 +2734,10 @@ export function Registration() {
                                             <div className="space-y-2 col-span-2">
                                                 <Label className="text-sm font-medium text-gray-500">Additional Notes</Label>
                                                 {isEditing ? (
-                                                    <textarea 
-                                                        name="additionalNotes" 
-                                                        value={editForm?.additionalNotes || ''} 
-                                                        onChange={handleEditChange} 
+                                                    <textarea
+                                                        name="additionalNotes"
+                                                        value={editForm?.additionalNotes || ''}
+                                                        onChange={handleEditChange}
                                                         className="w-full border rounded px-3 py-2 text-sm min-h-[80px]"
                                                         placeholder="Additional notes about arrival"
                                                     />
@@ -2467,10 +2777,10 @@ export function Registration() {
                                                     <Label className="text-sm font-medium text-gray-500">Return Date</Label>
                                                     {isEditing ? (
                                                         <div className="space-y-1">
-                                                            <Input 
-                                                                name="returnDate" 
-                                                                type="date" 
-                                                                value={editForm?.returnDate || '2025-12-07'} 
+                                                            <Input
+                                                                name="returnDate"
+                                                                type="date"
+                                                                value={editForm?.returnDate || '2025-12-07'}
                                                                 onChange={handleEditChange}
                                                                 min="2025-12-07"
                                                                 max="2025-12-07"
@@ -2480,10 +2790,10 @@ export function Registration() {
                                                         </div>
                                                     ) : selectedRegistration.returnDate ? (
                                                         <p className="text-base font-medium text-gray-900">
-                                                            {new Date(selectedRegistration.returnDate).toLocaleDateString('en-GB', { 
-                                                                day: '2-digit', 
-                                                                month: 'short', 
-                                                                year: 'numeric' 
+                                                            {new Date(selectedRegistration.returnDate).toLocaleDateString('en-GB', {
+                                                                day: '2-digit',
+                                                                month: 'short',
+                                                                year: 'numeric'
                                                             })}
                                                         </p>
                                                     ) : (
@@ -2494,8 +2804,8 @@ export function Registration() {
                                                 <div className="space-y-2 col-span-2">
                                                     <Label className="text-sm font-medium text-gray-500">Bus Timing</Label>
                                                     {isEditing ? (
-                                                        <RadioGroup 
-                                                            value={editForm?.busTime || ''} 
+                                                        <RadioGroup
+                                                            value={editForm?.busTime || ''}
                                                             onValueChange={(value) => setEditForm(f => ({ ...f!, busTime: value }))}
                                                             className="space-y-2"
                                                         >
@@ -2555,9 +2865,9 @@ export function Registration() {
                                                 <div className="space-y-2">
                                                     <Label className="text-sm font-medium text-gray-500">Bus Number</Label>
                                                     {isEditing ? (
-                                                        <Input 
-                                                            name="busNo" 
-                                                            value={editForm?.busNo || ''} 
+                                                        <Input
+                                                            name="busNo"
+                                                            value={editForm?.busNo || ''}
                                                             onChange={handleEditChange}
                                                             placeholder="Enter bus number"
                                                             maxLength={100}
@@ -2574,9 +2884,9 @@ export function Registration() {
                                                 <div className="space-y-2">
                                                     <Label className="text-sm font-medium text-gray-500">Tent Number</Label>
                                                     {isEditing ? (
-                                                        <Input 
-                                                            name="tentNo" 
-                                                            value={editForm?.tentNo || ''} 
+                                                        <Input
+                                                            name="tentNo"
+                                                            value={editForm?.tentNo || ''}
                                                             onChange={handleEditChange}
                                                             placeholder="Enter tent number"
                                                             maxLength={100}
@@ -2593,9 +2903,9 @@ export function Registration() {
                                                 <div className="space-y-2 col-span-2">
                                                     <Label className="text-sm font-medium text-gray-500">Silder/Jirawala Room Number</Label>
                                                     {isEditing ? (
-                                                        <Input 
-                                                            name="roomNo" 
-                                                            value={editForm?.roomNo || ''} 
+                                                        <Input
+                                                            name="roomNo"
+                                                            value={editForm?.roomNo || ''}
                                                             onChange={handleEditChange}
                                                             placeholder="Enter room number"
                                                             maxLength={100}
@@ -2625,17 +2935,17 @@ export function Registration() {
                                                                 <td className="border border-gray-300 px-4 py-2">
                                                                     {isEditing ? (
                                                                         <div className="grid grid-cols-2 gap-2">
-                                                                            <Input 
-                                                                                name="nakodaBlock" 
-                                                                                value={editForm?.nakodaBlock || ''} 
+                                                                            <Input
+                                                                                name="nakodaBlock"
+                                                                                value={editForm?.nakodaBlock || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Block"
                                                                                 maxLength={100}
                                                                                 className="text-sm"
                                                                             />
-                                                                            <Input 
-                                                                                name="nakodaRoom" 
-                                                                                value={editForm?.nakodaRoom || ''} 
+                                                                            <Input
+                                                                                name="nakodaRoom"
+                                                                                value={editForm?.nakodaRoom || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Room"
                                                                                 maxLength={100}
@@ -2647,10 +2957,10 @@ export function Registration() {
                                                                             {selectedRegistration.nakodaBlock && selectedRegistration.nakodaRoom
                                                                                 ? `Block ${selectedRegistration.nakodaBlock}, Room ${selectedRegistration.nakodaRoom}`
                                                                                 : selectedRegistration.nakodaBlock
-                                                                                ? `Block ${selectedRegistration.nakodaBlock}`
-                                                                                : selectedRegistration.nakodaRoom
-                                                                                ? `Room ${selectedRegistration.nakodaRoom}`
-                                                                                : 'Not Assigned'}
+                                                                                    ? `Block ${selectedRegistration.nakodaBlock}`
+                                                                                    : selectedRegistration.nakodaRoom
+                                                                                        ? `Room ${selectedRegistration.nakodaRoom}`
+                                                                                        : 'Not Assigned'}
                                                                         </p>
                                                                     )}
                                                                 </td>
@@ -2662,17 +2972,17 @@ export function Registration() {
                                                                 <td className="border border-gray-300 px-4 py-2">
                                                                     {isEditing ? (
                                                                         <div className="grid grid-cols-2 gap-2">
-                                                                            <Input 
-                                                                                name="tarangaBlock" 
-                                                                                value={editForm?.tarangaBlock || ''} 
+                                                                            <Input
+                                                                                name="tarangaBlock"
+                                                                                value={editForm?.tarangaBlock || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Block"
                                                                                 maxLength={100}
                                                                                 className="text-sm"
                                                                             />
-                                                                            <Input 
-                                                                                name="tarangaRoom" 
-                                                                                value={editForm?.tarangaRoom || ''} 
+                                                                            <Input
+                                                                                name="tarangaRoom"
+                                                                                value={editForm?.tarangaRoom || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Room"
                                                                                 maxLength={100}
@@ -2684,10 +2994,10 @@ export function Registration() {
                                                                             {selectedRegistration.tarangaBlock && selectedRegistration.tarangaRoom
                                                                                 ? `Block ${selectedRegistration.tarangaBlock}, Room ${selectedRegistration.tarangaRoom}`
                                                                                 : selectedRegistration.tarangaBlock
-                                                                                ? `Block ${selectedRegistration.tarangaBlock}`
-                                                                                : selectedRegistration.tarangaRoom
-                                                                                ? `Room ${selectedRegistration.tarangaRoom}`
-                                                                                : 'Not Assigned'}
+                                                                                    ? `Block ${selectedRegistration.tarangaBlock}`
+                                                                                    : selectedRegistration.tarangaRoom
+                                                                                        ? `Room ${selectedRegistration.tarangaRoom}`
+                                                                                        : 'Not Assigned'}
                                                                         </p>
                                                                     )}
                                                                 </td>
@@ -2699,17 +3009,17 @@ export function Registration() {
                                                                 <td className="border border-gray-300 px-4 py-2">
                                                                     {isEditing ? (
                                                                         <div className="grid grid-cols-2 gap-2">
-                                                                            <Input 
-                                                                                name="sankeshwarBlock" 
-                                                                                value={editForm?.sankeshwarBlock || ''} 
+                                                                            <Input
+                                                                                name="sankeshwarBlock"
+                                                                                value={editForm?.sankeshwarBlock || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Block"
                                                                                 maxLength={100}
                                                                                 className="text-sm"
                                                                             />
-                                                                            <Input 
-                                                                                name="sankeshwarRoom" 
-                                                                                value={editForm?.sankeshwarRoom || ''} 
+                                                                            <Input
+                                                                                name="sankeshwarRoom"
+                                                                                value={editForm?.sankeshwarRoom || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Room"
                                                                                 maxLength={100}
@@ -2721,10 +3031,10 @@ export function Registration() {
                                                                             {selectedRegistration.sankeshwarBlock && selectedRegistration.sankeshwarRoom
                                                                                 ? `Block ${selectedRegistration.sankeshwarBlock}, Room ${selectedRegistration.sankeshwarRoom}`
                                                                                 : selectedRegistration.sankeshwarBlock
-                                                                                ? `Block ${selectedRegistration.sankeshwarBlock}`
-                                                                                : selectedRegistration.sankeshwarRoom
-                                                                                ? `Room ${selectedRegistration.sankeshwarRoom}`
-                                                                                : 'Not Assigned'}
+                                                                                    ? `Block ${selectedRegistration.sankeshwarBlock}`
+                                                                                    : selectedRegistration.sankeshwarRoom
+                                                                                        ? `Room ${selectedRegistration.sankeshwarRoom}`
+                                                                                        : 'Not Assigned'}
                                                                         </p>
                                                                     )}
                                                                 </td>
@@ -2736,17 +3046,17 @@ export function Registration() {
                                                                 <td className="border border-gray-300 px-4 py-2">
                                                                     {isEditing ? (
                                                                         <div className="grid grid-cols-2 gap-2">
-                                                                            <Input 
-                                                                                name="girnarBlock" 
-                                                                                value={editForm?.girnarBlock || ''} 
+                                                                            <Input
+                                                                                name="girnarBlock"
+                                                                                value={editForm?.girnarBlock || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Block"
                                                                                 maxLength={100}
                                                                                 className="text-sm"
                                                                             />
-                                                                            <Input 
-                                                                                name="girnarRoom" 
-                                                                                value={editForm?.girnarRoom || ''} 
+                                                                            <Input
+                                                                                name="girnarRoom"
+                                                                                value={editForm?.girnarRoom || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Room"
                                                                                 maxLength={100}
@@ -2758,10 +3068,10 @@ export function Registration() {
                                                                             {selectedRegistration.girnarBlock && selectedRegistration.girnarRoom
                                                                                 ? `Block ${selectedRegistration.girnarBlock}, Room ${selectedRegistration.girnarRoom}`
                                                                                 : selectedRegistration.girnarBlock
-                                                                                ? `Block ${selectedRegistration.girnarBlock}`
-                                                                                : selectedRegistration.girnarRoom
-                                                                                ? `Room ${selectedRegistration.girnarRoom}`
-                                                                                : 'Not Assigned'}
+                                                                                    ? `Block ${selectedRegistration.girnarBlock}`
+                                                                                    : selectedRegistration.girnarRoom
+                                                                                        ? `Room ${selectedRegistration.girnarRoom}`
+                                                                                        : 'Not Assigned'}
                                                                         </p>
                                                                     )}
                                                                 </td>
@@ -2773,17 +3083,17 @@ export function Registration() {
                                                                 <td className="border border-gray-300 px-4 py-2">
                                                                     {isEditing ? (
                                                                         <div className="grid grid-cols-2 gap-2">
-                                                                            <Input 
-                                                                                name="palitanaBlock" 
-                                                                                value={editForm?.palitanaBlock || ''} 
+                                                                            <Input
+                                                                                name="palitanaBlock"
+                                                                                value={editForm?.palitanaBlock || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Block"
                                                                                 maxLength={100}
                                                                                 className="text-sm"
                                                                             />
-                                                                            <Input 
-                                                                                name="palitanaRoom" 
-                                                                                value={editForm?.palitanaRoom || ''} 
+                                                                            <Input
+                                                                                name="palitanaRoom"
+                                                                                value={editForm?.palitanaRoom || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Room"
                                                                                 maxLength={100}
@@ -2795,10 +3105,10 @@ export function Registration() {
                                                                             {selectedRegistration.palitanaBlock && selectedRegistration.palitanaRoom
                                                                                 ? `Block ${selectedRegistration.palitanaBlock}, Room ${selectedRegistration.palitanaRoom}`
                                                                                 : selectedRegistration.palitanaBlock
-                                                                                ? `Block ${selectedRegistration.palitanaBlock}`
-                                                                                : selectedRegistration.palitanaRoom
-                                                                                ? `Room ${selectedRegistration.palitanaRoom}`
-                                                                                : 'Not Assigned'}
+                                                                                    ? `Block ${selectedRegistration.palitanaBlock}`
+                                                                                    : selectedRegistration.palitanaRoom
+                                                                                        ? `Room ${selectedRegistration.palitanaRoom}`
+                                                                                        : 'Not Assigned'}
                                                                         </p>
                                                                     )}
                                                                 </td>
@@ -2824,9 +3134,9 @@ export function Registration() {
                                                 <div className="space-y-2 col-span-2">
                                                     <Label className="text-sm font-medium text-gray-500">Tent Number</Label>
                                                     {isEditing ? (
-                                                        <Input 
-                                                            name="tentNo" 
-                                                            value={editForm?.tentNo || ''} 
+                                                        <Input
+                                                            name="tentNo"
+                                                            value={editForm?.tentNo || ''}
                                                             onChange={handleEditChange}
                                                             placeholder="Enter tent number"
                                                             maxLength={100}
@@ -2856,17 +3166,17 @@ export function Registration() {
                                                                 <td className="border border-gray-300 px-4 py-2">
                                                                     {isEditing ? (
                                                                         <div className="grid grid-cols-2 gap-2">
-                                                                            <Input 
-                                                                                name="palitanaBlock" 
-                                                                                value={editForm?.palitanaBlock || ''} 
+                                                                            <Input
+                                                                                name="palitanaBlock"
+                                                                                value={editForm?.palitanaBlock || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Block"
                                                                                 maxLength={100}
                                                                                 className="text-sm"
                                                                             />
-                                                                            <Input 
-                                                                                name="palitanaRoom" 
-                                                                                value={editForm?.palitanaRoom || ''} 
+                                                                            <Input
+                                                                                name="palitanaRoom"
+                                                                                value={editForm?.palitanaRoom || ''}
                                                                                 onChange={handleEditChange}
                                                                                 placeholder="Room"
                                                                                 maxLength={100}
@@ -2878,10 +3188,10 @@ export function Registration() {
                                                                             {selectedRegistration.palitanaBlock && selectedRegistration.palitanaRoom
                                                                                 ? `Block ${selectedRegistration.palitanaBlock}, Room ${selectedRegistration.palitanaRoom}`
                                                                                 : selectedRegistration.palitanaBlock
-                                                                                ? `Block ${selectedRegistration.palitanaBlock}`
-                                                                                : selectedRegistration.palitanaRoom
-                                                                                ? `Room ${selectedRegistration.palitanaRoom}`
-                                                                                : 'Not Assigned'}
+                                                                                    ? `Block ${selectedRegistration.palitanaBlock}`
+                                                                                    : selectedRegistration.palitanaRoom
+                                                                                        ? `Room ${selectedRegistration.palitanaRoom}`
+                                                                                        : 'Not Assigned'}
                                                                         </p>
                                                                     )}
                                                                 </td>
@@ -2907,9 +3217,9 @@ export function Registration() {
                                                 <div className="space-y-2 col-span-2">
                                                     <Label className="text-sm font-medium text-gray-500">Navanu Room</Label>
                                                     {isEditing ? (
-                                                        <Input 
-                                                            name="navanuRoom" 
-                                                            value={editForm?.navanuRoom || ''} 
+                                                        <Input
+                                                            name="navanuRoom"
+                                                            value={editForm?.navanuRoom || ''}
                                                             onChange={handleEditChange}
                                                             placeholder="Enter navanu room number"
                                                             maxLength={100}
@@ -3081,8 +3391,8 @@ export function Registration() {
                                     <span className="text-sm font-medium text-gray-500 hidden sm:inline">Status:</span>
                                     <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-sm font-semibold ${selectedRegistration.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
                                         selectedRegistration.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                        selectedRegistration.status === 'INACTIVE' ? 'bg-gray-100 text-gray-700 line-through' :
-                                            'bg-yellow-100 text-yellow-700'
+                                            selectedRegistration.status === 'INACTIVE' ? 'bg-gray-100 text-gray-700 line-through' :
+                                                'bg-yellow-100 text-yellow-700'
                                         }`}>
                                         {selectedRegistration.status}
                                     </span>
@@ -3166,7 +3476,7 @@ export function Registration() {
                                             {selectedRegistration.status === 'SHORTLISTED' && (
                                                 <Button
                                                     variant="outline"
-                                                    onClick={() => handleStatusChange(selectedRegistration.id, 'PENDING', 'undo-shortlist')}
+                                                    onClick={() => initiateUndo(selectedRegistration.id, 'PENDING', 'undo-shortlist')}
                                                     size="sm"
                                                     className="h-9 px-2 sm:px-3"
                                                     title="Undo Shortlist"
@@ -3190,7 +3500,7 @@ export function Registration() {
                                             {selectedRegistration.status === 'APPROVED' && (
                                                 <Button
                                                     variant="outline"
-                                                    onClick={() => handleStatusChange(selectedRegistration.id, 'SHORTLISTED', 'undo-approve')}
+                                                    onClick={() => initiateUndo(selectedRegistration.id, 'SHORTLISTED', 'undo-approve')}
                                                     size="sm"
                                                     className="h-9 px-2 sm:px-3"
                                                     title="Undo Approve"
@@ -3346,6 +3656,31 @@ export function Registration() {
                         </Button>
                         <Button onClick={performBulkStatusUpdate}>
                             Confirm Update
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Undo Confirmation Dialog */}
+            <Dialog open={isUndoConfirmDialogOpen} onOpenChange={setIsUndoConfirmDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Undo Action</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p>
+                            Are you sure you want to {undoAction?.action === 'undo-shortlist' ? 'undo shortlist' : 'undo approval'}?
+                        </p>
+                        <p className="mt-2 text-sm text-gray-500">
+                            This will revert the status to {undoAction?.status === 'PENDING' ? 'Pending' : 'Shortlisted'}.
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsUndoConfirmDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={confirmUndo}>
+                            Confirm
                         </Button>
                     </DialogFooter>
                 </DialogContent>
